@@ -44,7 +44,7 @@ function applyPlaybackState(playing) {
   document.body.classList.toggle('is-playing', isPlaying);
 
   const record = document.querySelector('.record');
-  if (record) {
+  if (record && !record.classList.contains('record--enter')) {
     applyRecordRotation(record, playing);
   }
 }
@@ -81,6 +81,11 @@ function hideArtwork(artwork) {
   setArtworkGlow(null);
 }
 
+function finishRecordEntrance(record, playing) {
+  record.classList.remove('record--enter');
+  applyRecordRotation(record, playing);
+}
+
 function animateTrackChange(artwork, hasArtwork, playing) {
   const record = document.querySelector('.record');
   const recordStage = document.querySelector('.record-stage');
@@ -93,8 +98,7 @@ function animateTrackChange(artwork, hasArtwork, playing) {
       hideArtwork(artwork);
     }
     if (record) {
-      record.classList.remove('record--enter');
-      applyRecordRotation(record, playing);
+      finishRecordEntrance(record, playing);
     }
     info?.classList.remove('info--change');
     return;
@@ -103,11 +107,12 @@ function animateTrackChange(artwork, hasArtwork, playing) {
   if (recordChangeEnabled) {
     const oldRecord = record.cloneNode(true);
     const clonedArtwork = oldRecord.querySelector('#artwork');
+
     if (clonedArtwork) {
       clonedArtwork.removeAttribute('id');
     }
 
-    oldRecord.classList.remove('record--spinning', 'record--enter');
+    oldRecord.classList.remove('record--spinning', 'record--enter', 'record--exit');
     oldRecord.classList.add('record--exit');
     recordStage.appendChild(oldRecord);
 
@@ -117,10 +122,19 @@ function animateTrackChange(artwork, hasArtwork, playing) {
       hideArtwork(artwork);
     }
 
-    record.classList.remove('record--enter');
+    record.classList.remove('record--spinning', 'record--enter');
     void record.offsetWidth;
     record.classList.add('record--enter');
-    applyRecordRotation(record, playing);
+
+    const handleEntranceEnd = (event) => {
+      if (event.animationName !== 'record-enter') {
+        return;
+      }
+      record.removeEventListener('animationend', handleEntranceEnd);
+      finishRecordEntrance(record, playing);
+    };
+
+    record.addEventListener('animationend', handleEntranceEnd);
 
     const changeDuration = parseFloat(
       getComputedStyle(document.documentElement)
@@ -129,9 +143,7 @@ function animateTrackChange(artwork, hasArtwork, playing) {
 
     window.setTimeout(() => {
       oldRecord.remove();
-      record.classList.remove('record--enter');
-      applyRecordRotation(record, playing);
-    }, changeDuration + 30);
+    }, changeDuration + 60);
   } else {
     if (hasArtwork) {
       artwork.hidden = false;
@@ -165,18 +177,14 @@ function requestArtwork(trackKey, data, artwork) {
   artworkRequestKey = trackKey;
 
   const loadArtwork = (attempt = 1) => {
-    // A newer track has already started loading. This request is obsolete.
     if (artworkRequestKey !== trackKey) {
       return;
     }
 
-    // Keep cache-busting because the artwork endpoint represents the current
-    // Shairport state, not a permanent image URL.
     const nextArtworkUrl = `/artwork?t=${Date.now()}`;
     const image = new Image();
 
     image.onload = () => {
-      // Ignore an older request if another track was requested meanwhile.
       if (artworkRequestKey !== trackKey) {
         return;
       }
@@ -193,13 +201,10 @@ function requestArtwork(trackKey, data, artwork) {
       }
 
       if (attempt < 3) {
-        // Artwork can briefly lag behind the metadata update. Retry the same
-        // track immediately instead of waiting for the next polling cycle.
         window.setTimeout(() => loadArtwork(attempt + 1), 150);
         return;
       }
 
-      // Keep lastTrackKey unchanged so the normal polling loop can retry later.
       artworkRequestKey = null;
       console.error(`PlayPanel: artwork failed to load after ${attempt} attempts; will retry`);
     };
@@ -241,7 +246,6 @@ async function updateNowPlaying() {
     if (trackChanged && data.has_artwork) {
       requestArtwork(trackKey, data, artwork);
     } else if (trackChanged && !data.has_artwork) {
-      // No artwork is a confirmed state, so this track can be committed immediately.
       lastTrackKey = trackKey;
       artworkRequestKey = null;
       hideArtwork(artwork);
