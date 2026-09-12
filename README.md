@@ -11,20 +11,22 @@ Shairport Sync
    ↓
 /tmp/shairport-sync-metadata
    ↓
-metadata.py          ← メタデータ解析
+metadata.py
    ↓
-metadata_service.py  ← 最新状態を保持
+metadata_service.py
    ↓
-app.py               ← Flask / API / Web UI
+app.py
    ↓
-ブラウザ
+index.html + app.js + style.css
 ```
 
-コードは役割ごとに分けています。
+## ファイル構成
 
 ```text
 PlayPanel/
 ├── app.py                 # WebサーバーとAPI
+├── config.py              # 設定ファイルの読み込み
+├── config.toml            # ユーザーが編集する設定
 ├── metadata.py            # Shairport SyncのFIFO解析
 ├── metadata_service.py    # バックグラウンド読み取りと状態管理
 ├── models.py              # 曲情報のデータモデル
@@ -36,10 +38,12 @@ PlayPanel/
     └── style.css          # Web UIの見た目
 ```
 
+コードは役割ごとに分けています。
+
 ## 必要なもの
 
 - Debian / Ubuntu 系 Linux
-- Python 3
+- Python 3.11 以上
 - Shairport Sync
 - Shairport Sync の metadata pipe
 
@@ -66,15 +70,12 @@ pip install -r requirements.txt
 
 ```bash
 cd ~/PlayPanel
-
 git pull
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ## メタデータ取得の確認
-
-まず Shairport Sync の metadata pipe を直接読み取ります。
 
 ```bash
 cd ~/PlayPanel
@@ -94,33 +95,78 @@ Shairport Sync → metadata pipe → Python
 
 ## Web UI の確認
 
-次に Web アプリを起動します。
-
 ```bash
 cd ~/PlayPanel
 source .venv/bin/activate
 python app.py
 ```
 
-同じPCならブラウザで以下を開きます。
+ブラウザで開きます。
 
 ```text
 http://127.0.0.1:8765/
 ```
 
-API は以下です。
+曲情報のJSON API:
 
 ```text
 http://127.0.0.1:8765/now-playing.json
 ```
 
-カバーアートは以下から取得します。
+カバーアート:
 
 ```text
 http://127.0.0.1:8765/artwork
 ```
 
-ブラウザ側は1秒ごとに `/now-playing.json` を確認し、曲情報とカバーアートを更新します。
+## 設定
+
+画面のカスタマイズは `config.toml` を編集します。
+
+```toml
+[layout]
+# アルバム画像の大きさ（px）
+artwork_size = 460
+
+# 画面全体の最大幅（px）
+panel_max_width = 1100
+
+# レコードと曲情報の間隔（px）
+panel_gap = 48
+
+[appearance]
+# 背景色
+background_color = "#111111"
+
+# 文字色
+text_color = "#ffffff"
+
+# 再生状態などのアクセント色
+accent_color = "#ffffff"
+
+[text]
+# タイトルの文字サイズ
+title_size = "clamp(2.4rem, 5vw, 5rem)"
+
+# アーティストの文字サイズ
+artist_size = "clamp(1.4rem, 2.5vw, 2.2rem)"
+
+# アルバム名の文字サイズ
+album_size = "1rem"
+
+[behavior]
+# 曲情報を確認する間隔（ミリ秒）
+poll_interval_ms = 1000
+```
+
+よく変更するのは `artwork_size`、`background_color`、`text_color`、`accent_color` です。
+
+設定を変更したら、PlayPanel を再起動してください。
+
+```text
+Ctrl+C
+python app.py
+```
 
 ## 現在の機能
 
@@ -136,17 +182,17 @@ http://127.0.0.1:8765/artwork
 - 再生状態
 - JSON API `/now-playing.json`
 - カバーアート API `/artwork`
-- 基本的な Web UI
+- TOML 設定ファイルによる画面カスタマイズ
+
+## 次の段階
+
+1. 曲変更時のレコード交換アニメーション
+2. レコード回転アニメーション
+3. 再生時間・プログレス表示
+4. 必要なら Shairport Sync の追加 metadata 対応
 
 ## 仮想環境を終了する
 
 ```bash
 deactivate
 ```
-
-## 次の段階
-
-1. Web UI のデザイン改善
-2. 曲変更時の表示をより滑らかにする
-3. 再生時間・プログレス表示
-4. 必要なら Shairport Sync の追加 metadata 対応
