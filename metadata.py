@@ -184,7 +184,6 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         value = _metadata_text(payload)
 
         if code == "minm":
-            state.track_id = ""
             state.title = value
         elif code == "asar":
             state.artist = value
@@ -199,7 +198,7 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         elif code == "snam":
             state.client_name = value
 
-        if not state.track_id:
+        if not state.track_id or state.track_id.startswith("fallback:"):
             state.track_id = _fallback_track_id(state)
         return
 
