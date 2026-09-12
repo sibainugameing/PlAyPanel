@@ -133,6 +133,16 @@ def read_metadata_item(stream: BinaryIO) -> tuple[str, str, int, bytes] | None:
     return type_code, metadata_code, declared_length, payload
 
 
+def _metadata_text(payload: bytes) -> str:
+    return payload.decode("utf-8", errors="replace").rstrip("\x00")
+
+
+def _fallback_track_id(state: TrackMetadata) -> str:
+    parts = [state.title, state.artist, state.album]
+    value = "\x1f".join(parts).strip("\x1f")
+    return f"fallback:{value}" if value else ""
+
+
 def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
     _type_code, code, declared_length, payload = item
 
@@ -148,11 +158,16 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
             return
         if detect_image_type(payload) is not None:
             state.artwork = payload
+            state.artwork_track_id = state.track_id
         else:
             print(
                 f"Unknown cover image format ({len(payload)} bytes)",
                 flush=True,
             )
+        return
+
+    if code == "mper":
+        state.track_id = _metadata_text(payload)
         return
 
     if code in {"pbeg", "prsm"}:
@@ -164,7 +179,7 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         return
 
     if code in {"minm", "asar", "asal", "asaa", "asgn", "ascp", "snam"}:
-        value = payload.decode("utf-8", errors="replace").rstrip("\x00")
+        value = _metadata_text(payload)
 
         if code == "minm":
             state.title = value
@@ -180,6 +195,9 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
             state.composer = value
         elif code == "snam":
             state.client_name = value
+
+        if not state.track_id:
+            state.track_id = _fallback_track_id(state)
         return
 
     if code == "caps" and payload:
@@ -200,12 +218,19 @@ def follow_metadata_pipe(pipe: Path = DEFAULT_PIPE) -> Iterator[TrackMetadata]:
     while True:
         try:
             with pipe.open("rb", buffering=0) as stream:
+                state.connected = True
                 print(f"Metadata pipe connected: {pipe}", flush=True)
+                yield state
+
                 for item in metadata_items(stream):
                     apply_item(state, item)
                     yield state
+
+                state.connected = False
                 print("Metadata pipe disconnected.", flush=True)
+                yield state
         except (FileNotFoundError, PermissionError, OSError) as exc:
+            state.connected = False
             print(f"Metadata pipe error: {exc}", flush=True)
 
         time.sleep(1)
