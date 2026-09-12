@@ -1,0 +1,30 @@
+# PlayPanel settings
+# Edit this file, then restart PlayPanel.
+
+[server]
+host = "0.0.0.0"
+port = 8765
+
+[layout]
+# Album artwork diameter in pixels.
+artwork_size = 520
+
+# Maximum width of the whole panel.
+panel_max_width = 1180
+
+# Space between record and song information.
+panel_gap = 70
+
+[appearance]
+background_color = "#080808"
+text_color = "#f5f5f5"
+muted_color = "rgba(245, 245, 245, 0.58)"
+
+[typography]
+title_size = "clamp(2.8rem, 5.6vw, 6rem)"
+artist_size = "clamp(1.35rem, 2.25vw, 2.15rem)"
+album_size = "1rem"
+
+[behavior]
+# Browser refresh interval for metadata.
+poll_interval_ms = 1000
