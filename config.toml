@@ -32,26 +32,26 @@ enabled = true
 # Continuous vinyl rotation while the player is playing.
 record_rotation_enabled = true
 # Full revolutions per minute.
-record_rotation_speed = 3.0
+record_rotation_speed = 2.0
 
 # Record-to-record slide when the track changes.
 record_change_enabled = true
-# Duration of the record exchange in milliseconds.
-record_change_duration = 760
+# Duration in milliseconds. Slower gives the exchange more breathing room.
+record_change_duration = 1200
 # Horizontal travel distance as a percentage of the record stage.
-record_change_distance = 120
+record_change_distance = 105
 # Additional rotation in degrees during the exchange.
-record_change_rotation = 22.0
+record_change_rotation = 10.0
 
 # Song information fade/slide when the track changes.
 info_change_enabled = true
 # Duration in milliseconds.
-info_change_duration = 420
+info_change_duration = 650
 # Vertical travel distance in pixels.
-info_change_distance = 16
+info_change_distance = 10
 
 # CSS easing curve used by the change animations.
-easing = "cubic-bezier(0.22, 1, 0.36, 1)"
+easing = "cubic-bezier(0.25, 0.85, 0.3, 1)"
 
 [behavior]
 # Browser refresh interval for metadata.
