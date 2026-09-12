@@ -9,6 +9,7 @@ let recordTransitionTimer = null;
 let clockTimer = null;
 let blankTimer = null;
 let previousConnected = null;
+let disconnectedPollCount = 0;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -31,6 +32,7 @@ const screenBlankTimeoutMinutes = Number(displayConfig.screenBlankTimeoutMinutes
   : 30;
 
 const recordRotationDurationSeconds = 60 / recordRotationSpeed;
+const disconnectConfirmPolls = 3;
 
 document.body.classList.toggle('animations-disabled', !animationsEnabled);
 document.documentElement.style.setProperty(
@@ -134,17 +136,26 @@ function applyRecordRotation(record, playing) {
 function setConnectionState(connected) {
   const nextConnected = connected === true;
   const wasConnected = previousConnected;
-  previousConnected = nextConnected;
 
-  const changed = wasConnected !== null && wasConnected !== nextConnected;
-  document.body.classList.toggle('is-disconnected', !nextConnected);
+  if (nextConnected) {
+    disconnectedPollCount = 0;
+  } else {
+    disconnectedPollCount += 1;
+  }
+
+  const confirmedDisconnected = !nextConnected && disconnectedPollCount >= disconnectConfirmPolls;
+  const effectiveConnected = nextConnected || !confirmedDisconnected;
+  previousConnected = effectiveConnected;
+
+  const changed = wasConnected !== null && wasConnected !== effectiveConnected;
+  document.body.classList.toggle('is-disconnected', !effectiveConnected);
 
   if (!animationsEnabled || !changed) {
     document.body.classList.remove('connection-lost', 'connection-restored');
     return;
   }
 
-  if (nextConnected) {
+  if (effectiveConnected) {
     document.body.classList.remove('connection-lost');
     void document.body.offsetWidth;
     document.body.classList.add('connection-restored');
