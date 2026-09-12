@@ -1,0 +1,9 @@
+.record {
+  /* Keep the rotation animation alive so stopping playback freezes at the current angle. */
+  animation: record-spin var(--record-rotation-duration, 3.333s) linear infinite;
+  animation-play-state: paused;
+}
+
+.record--spinning {
+  animation-play-state: running;
+}
