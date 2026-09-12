@@ -25,6 +25,10 @@ title_size = "clamp(2.8rem, 5.6vw, 6rem)"
 artist_size = "clamp(1.35rem, 2.25vw, 2.15rem)"
 album_size = "1rem"
 
+[animation]
+# Set to false to disable all PlayPanel UI animations.
+enabled = true
+
 [behavior]
 # Browser refresh interval for metadata.
 poll_interval_ms = 1000
