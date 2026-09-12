@@ -22,6 +22,16 @@ class PlayPanelConfig:
     artist_size: str = "clamp(1.35rem, 2.25vw, 2.15rem)"
     album_size: str = "1rem"
     animations_enabled: bool = True
+    record_rotation_enabled: bool = True
+    record_rotation_speed: float = 18.0
+    record_change_enabled: bool = True
+    record_change_duration: int = 760
+    record_change_distance: int = 120
+    record_change_rotation: float = 22.0
+    info_change_enabled: bool = True
+    info_change_duration: int = 420
+    info_change_distance: int = 16
+    animation_easing: str = "cubic-bezier(0.22, 1, 0.36, 1)"
     poll_interval_ms: int = 1000
 
 
@@ -54,5 +64,15 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         artist_size=str(typography.get("artist_size", defaults.artist_size)),
         album_size=str(typography.get("album_size", defaults.album_size)),
         animations_enabled=bool(animation.get("enabled", defaults.animations_enabled)),
+        record_rotation_enabled=bool(animation.get("record_rotation_enabled", defaults.record_rotation_enabled)),
+        record_rotation_speed=float(animation.get("record_rotation_speed", defaults.record_rotation_speed)),
+        record_change_enabled=bool(animation.get("record_change_enabled", defaults.record_change_enabled)),
+        record_change_duration=int(animation.get("record_change_duration", defaults.record_change_duration)),
+        record_change_distance=int(animation.get("record_change_distance", defaults.record_change_distance)),
+        record_change_rotation=float(animation.get("record_change_rotation", defaults.record_change_rotation)),
+        info_change_enabled=bool(animation.get("info_change_enabled", defaults.info_change_enabled)),
+        info_change_duration=int(animation.get("info_change_duration", defaults.info_change_duration)),
+        info_change_distance=int(animation.get("info_change_distance", defaults.info_change_distance)),
+        animation_easing=str(animation.get("easing", defaults.animation_easing)),
         poll_interval_ms=int(behavior.get("poll_interval_ms", defaults.poll_interval_ms)),
     )
