@@ -8,8 +8,6 @@ let artworkRetryTimer = null;
 let recordTransitionTimer = null;
 let clockTimer = null;
 let blankTimer = null;
-let previousConnected = null;
-let disconnectedPollCount = 0;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -32,7 +30,6 @@ const screenBlankTimeoutMinutes = Number(displayConfig.screenBlankTimeoutMinutes
   : 30;
 
 const recordRotationDurationSeconds = 60 / recordRotationSpeed;
-const disconnectConfirmPolls = 3;
 
 document.body.classList.toggle('animations-disabled', !animationsEnabled);
 document.documentElement.style.setProperty(
@@ -133,48 +130,6 @@ function applyRecordRotation(record, playing) {
   record.classList.toggle('record--spinning', shouldSpin);
 }
 
-function setConnectionState(connected) {
-  const nextConnected = connected === true;
-  const wasConnected = previousConnected;
-
-  if (nextConnected) {
-    disconnectedPollCount = 0;
-  } else {
-    disconnectedPollCount += 1;
-  }
-
-  const confirmedDisconnected = !nextConnected && disconnectedPollCount >= disconnectConfirmPolls;
-  const effectiveConnected = nextConnected || !confirmedDisconnected;
-  previousConnected = effectiveConnected;
-
-  const changed = wasConnected !== null && wasConnected !== effectiveConnected;
-  document.body.classList.toggle('is-disconnected', !effectiveConnected);
-
-  if (!animationsEnabled || !changed) {
-    document.body.classList.remove('connection-lost', 'connection-restored');
-    return;
-  }
-
-  if (effectiveConnected) {
-    document.body.classList.remove('connection-lost');
-    void document.body.offsetWidth;
-    document.body.classList.add('connection-restored');
-  } else {
-    document.body.classList.remove('connection-restored');
-    void document.body.offsetWidth;
-    document.body.classList.add('connection-lost');
-
-    const record = document.querySelector('.record');
-    if (record) {
-      record.classList.remove('record--spinning', 'record--enter');
-    }
-  }
-
-  window.setTimeout(() => {
-    document.body.classList.remove('connection-lost', 'connection-restored');
-  }, 750);
-}
-
 function setArtworkGlow(src) {
   const recordStage = document.querySelector('.record-stage');
   if (!recordStage) {
@@ -182,7 +137,7 @@ function setArtworkGlow(src) {
   }
 
   if (src) {
-    recordStage.style.setProperty('--artwork-image', `url("${src}")`);
+    recordStage.style.setProperty('--artwork-image', `url(\"${src}\")`);
     recordStage.classList.add('has-artwork-glow');
   } else {
     recordStage.style.removeProperty('--artwork-image');
@@ -425,7 +380,6 @@ async function updateNowPlaying() {
 
     const data = await response.json();
     const connected = data.connected === true;
-    setConnectionState(connected);
 
     const title = data.title || '---';
     document.querySelector('#title').textContent = title;
@@ -434,12 +388,14 @@ async function updateNowPlaying() {
     document.querySelector('#album').textContent = data.album || '---';
 
     const status = document.querySelector('#status');
-    if (!connected) {
+    const hasTrackInfo = Boolean(data.title || data.artist || data.album || data.track_id);
+
+    if (!hasTrackInfo) {
       status.textContent = 'Shairport未接続';
     } else {
       status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
     }
-    applyPlaybackState(connected ? data.playing : null);
+    applyPlaybackState(data.playing);
 
     const trackKey = data.track_id || '';
     const artwork = document.querySelector('#artwork');
@@ -458,17 +414,16 @@ async function updateNowPlaying() {
 
       artworkRequestKey = null;
 
-      if (trackKey && connected && artworkReady) {
+      if (trackKey && artworkReady) {
         requestArtwork(trackKey, data, artwork);
         scheduleArtworkRetry(trackKey, data, artwork);
       }
-    } else if (trackKey && connected && artworkReady && artworkLoadedTrackKey !== trackKey && artworkRequestKey === null) {
+    } else if (trackKey && artworkReady && artworkLoadedTrackKey !== trackKey && artworkRequestKey === null) {
       requestArtwork(trackKey, data, artwork);
       scheduleArtworkRetry(trackKey, data, artwork);
     }
   } catch (error) {
     document.querySelector('#status').textContent = '接続エラー';
-    setConnectionState(false);
     applyPlaybackState(null);
     console.error('PlayPanel:', error);
   }
