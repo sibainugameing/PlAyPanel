@@ -1,7 +1,9 @@
 let lastTrackKey = null;
+let currentTrackKey = null;
 let artworkRequestKey = null;
 let currentArtworkUrl = null;
 let artworkSwapTimer = null;
+let artworkRetryTimer = null;
 let recordTransitionTimer = null;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
@@ -14,6 +16,9 @@ const recordRotationSpeed = Number(animationConfig.recordRotationSpeed) > 0
 const recordChangeEnabled = animationConfig.recordChangeEnabled !== false;
 const infoChangeEnabled = animationConfig.infoChangeEnabled !== false;
 const pollIntervalMs = config.pollIntervalMs ?? 1000;
+const artworkRetryIntervalMs = Number(config.artworkRetryIntervalMs) > 0
+  ? Number(config.artworkRetryIntervalMs)
+  : 3000;
 
 const recordRotationDurationSeconds = 60 / recordRotationSpeed;
 
@@ -126,7 +131,10 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
     record.style.visibility = 'hidden';
 
     recordTransitionTimer = window.setTimeout(() => {
+      recordTransitionTimer = null;
+
       if (!record.isConnected) {
+        oldRecord.remove();
         return;
       }
 
@@ -148,7 +156,6 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
 
       record.addEventListener('animationend', handleEntranceEnd);
       oldRecord.remove();
-      recordTransitionTimer = null;
     }, changeDuration + 20);
   }
 
@@ -190,15 +197,33 @@ function showNewArtwork(artwork, objectUrl, playing) {
   }
 }
 
+function scheduleArtworkRetry(trackKey, data, artwork) {
+  if (artworkRetryTimer !== null) {
+    window.clearTimeout(artworkRetryTimer);
+  }
+
+  artworkRetryTimer = window.setTimeout(() => {
+    artworkRetryTimer = null;
+
+    if (currentTrackKey !== trackKey || lastTrackKey === trackKey) {
+      return;
+    }
+
+    if (artworkRequestKey === null) {
+      requestArtwork(trackKey, data, artwork);
+    }
+  }, artworkRetryIntervalMs);
+}
+
 async function requestArtwork(trackKey, data, artwork) {
-  if (artworkRequestKey === trackKey) {
+  if (currentTrackKey !== trackKey || artworkRequestKey === trackKey) {
     return;
   }
 
   artworkRequestKey = trackKey;
 
   const loadArtwork = async (attempt = 1) => {
-    if (artworkRequestKey !== trackKey) {
+    if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
       return;
     }
 
@@ -221,7 +246,7 @@ async function requestArtwork(trackKey, data, artwork) {
       const image = new Image();
 
       image.onload = () => {
-        if (artworkRequestKey !== trackKey) {
+        if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
           URL.revokeObjectURL(objectUrl);
           return;
         }
@@ -229,12 +254,17 @@ async function requestArtwork(trackKey, data, artwork) {
         showNewArtwork(artwork, objectUrl, data.playing);
         lastTrackKey = trackKey;
         artworkRequestKey = null;
+
+        if (artworkRetryTimer !== null) {
+          window.clearTimeout(artworkRetryTimer);
+          artworkRetryTimer = null;
+        }
       };
 
       image.onerror = () => {
         URL.revokeObjectURL(objectUrl);
 
-        if (artworkRequestKey !== trackKey) {
+        if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
           return;
         }
 
@@ -244,12 +274,15 @@ async function requestArtwork(trackKey, data, artwork) {
         }
 
         artworkRequestKey = null;
-        console.error(`PlayPanel: artwork failed to decode after ${attempt} attempts; keeping current artwork`);
+        console.error(
+          `PlayPanel: artwork failed to decode after ${attempt} attempts; will retry`
+        );
+        scheduleArtworkRetry(trackKey, data, artwork);
       };
 
       image.src = objectUrl;
     } catch (error) {
-      if (artworkRequestKey !== trackKey) {
+      if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
         return;
       }
 
@@ -259,7 +292,11 @@ async function requestArtwork(trackKey, data, artwork) {
       }
 
       artworkRequestKey = null;
-      console.error(`PlayPanel: artwork request failed after ${attempt} attempts; keeping current artwork`, error);
+      console.error(
+        `PlayPanel: artwork request failed after ${attempt} attempts; will retry`,
+        error
+      );
+      scheduleArtworkRetry(trackKey, data, artwork);
     }
   };
 
@@ -292,13 +329,28 @@ async function updateNowPlaying() {
     ].join('\u0001');
 
     const artwork = document.querySelector('#artwork');
-    const trackChanged = trackKey !== lastTrackKey;
+    const trackChanged = trackKey !== currentTrackKey;
 
-    if (trackChanged && data.has_artwork) {
+    if (trackChanged) {
+      currentTrackKey = trackKey;
+
+      if (artworkRetryTimer !== null) {
+        window.clearTimeout(artworkRetryTimer);
+        artworkRetryTimer = null;
+      }
+
+      artworkRequestKey = null;
+
+      // Try immediately. A missing PICT or a temporary HTTP failure is treated
+      // as a transient state and will be retried periodically below.
       requestArtwork(trackKey, data, artwork);
-    } else if (trackChanged && !data.has_artwork) {
-      // Metadata can arrive before PICT. Keep the current cover and wait for
-      // Shairport Sync to provide the artwork for this track.
+
+      if (lastTrackKey !== trackKey) {
+        scheduleArtworkRetry(trackKey, data, artwork);
+      }
+    } else if (lastTrackKey !== trackKey && artworkRequestKey === null) {
+      // Same track, but the artwork is still missing. Keep retrying until it works.
+      scheduleArtworkRetry(trackKey, data, artwork);
     }
   } catch (error) {
     document.querySelector('#status').textContent = '接続エラー';
