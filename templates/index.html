@@ -3,26 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080808">
   <title>PlayPanel</title>
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <main class="panel">
-    <section class="visual" aria-label="ジャケット">
-      <div class="record">
-        <div class="record-label">
-          <img id="artwork" class="artwork" alt="ジャケット画像" hidden>
+  <main class="panel" aria-live="polite">
+    <section class="visual" aria-label="アルバムアート">
+      <div class="record-stage">
+        <div class="record-shadow"></div>
+        <div class="record">
+          <div class="record-grooves"></div>
+          <div class="record-label">
+            <img id="artwork" class="artwork" alt="アルバムアート" hidden>
+            <div class="label-fallback" aria-hidden="true">PLAY</div>
+          </div>
+          <div class="record-hole" aria-hidden="true"></div>
         </div>
-        <div class="record-hole" aria-hidden="true"></div>
       </div>
     </section>
 
     <section class="info">
-      <p id="status" class="status">待機中</p>
-      <h1 id="title">---</h1>
-      <p id="artist" class="artist">---</p>
-      <p id="album" class="album">---</p>
+      <div class="eyebrow">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="status">待機中</span>
+      </div>
+
+      <div class="track-copy">
+        <p class="now-playing">NOW PLAYING</p>
+        <h1 id="title">---</h1>
+        <p id="artist" class="artist">---</p>
+        <p id="album" class="album">---</p>
+      </div>
+
+      <div class="info-line" aria-hidden="true"></div>
+      <p class="product-name">PlayPanel</p>
     </section>
   </main>
 
