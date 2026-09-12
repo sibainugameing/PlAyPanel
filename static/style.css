@@ -22,19 +22,20 @@ body {
 .panel {
   width: min(1100px, 92vw);
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
   gap: 48px;
   align-items: center;
 }
 
 .visual {
+  min-width: 0;
   display: grid;
   place-items: center;
 }
 
 .record {
   position: relative;
-  width: min(72vw, 680px);
+  width: min(100%, 560px);
   aspect-ratio: 1;
   border-radius: 50%;
   background:
@@ -57,7 +58,7 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(55vw, 520px);
+  width: min(92%, 520px);
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   overflow: hidden;
@@ -83,6 +84,8 @@ body {
 
 .info {
   min-width: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .status {
@@ -135,6 +138,6 @@ h1 {
   }
 
   .record-label {
-    width: min(68vw, 520px);
+    width: min(92%, 520px);
   }
 }
