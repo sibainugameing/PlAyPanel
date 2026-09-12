@@ -32,7 +32,7 @@ enabled = true
 # Continuous vinyl rotation while the player is playing.
 record_rotation_enabled = true
 # Full revolutions per minute.
-record_rotation_speed = 5.0
+record_rotation_speed = 3.0
 
 # Record-to-record slide when the track changes.
 record_change_enabled = true
