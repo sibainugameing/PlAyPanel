@@ -3,6 +3,8 @@ let artworkRequestKey = null;
 let artworkLoadedTrackKey = null;
 let currentArtworkUrl = null;
 let artworkRetryTimer = null;
+let artworkCollectionTimer = null;
+let artworkCollectionEndTimer = null;
 let recordReturnTimer = null;
 let clockTimer = null;
 let blankTimer = null;
@@ -20,6 +22,12 @@ const recordChangeEnabled = animationConfig.recordChangeEnabled !== false;
 const infoChangeEnabled = animationConfig.infoChangeEnabled !== false;
 const pollIntervalMs = Math.max(250, Number(config.pollIntervalMs) || 1000);
 const artworkRetryIntervalMs = Math.max(250, Number(config.artworkRetryIntervalMs) || 3000);
+
+// On a track change, keep requesting artwork for a short window before displaying it.
+// This avoids committing an image from the brief period where metadata is still changing.
+const artworkCollectionIntervalMs = 500;
+const artworkCollectionDurationMs = 4000;
+
 const clockEnabled = displayConfig.clockEnabled === true;
 const screenBlankEnabled = displayConfig.screenBlankEnabled === true;
 const screenBlankTimeoutMinutes = Number(displayConfig.screenBlankTimeoutMinutes) > 0
@@ -229,7 +237,7 @@ function animateTrackChange(playing) {
 }
 
 function swapArtwork(artwork, artworkUrl, playing) {
-  // The preloader has completed successfully. Use the normal HTTP URL directly.
+  // The collection window has completed. Commit the last successful HTTP image.
   artwork.onload = null;
   artwork.onerror = null;
   artwork.src = artworkUrl;
@@ -237,6 +245,18 @@ function swapArtwork(artwork, artworkUrl, playing) {
   currentArtworkUrl = artworkUrl;
   setArtworkGlow(artworkUrl);
   animateTrackChange(playing);
+}
+
+function clearArtworkCollectionTimers() {
+  if (artworkCollectionTimer !== null) {
+    window.clearInterval(artworkCollectionTimer);
+    artworkCollectionTimer = null;
+  }
+
+  if (artworkCollectionEndTimer !== null) {
+    window.clearTimeout(artworkCollectionEndTimer);
+    artworkCollectionEndTimer = null;
+  }
 }
 
 function scheduleArtworkRetry(trackKey, data, artwork, delay = artworkRetryIntervalMs) {
@@ -256,32 +276,61 @@ function requestArtwork(trackKey, data, artwork) {
   if (!trackKey || currentTrackKey !== trackKey || artworkRequestKey === trackKey) return;
 
   artworkRequestKey = trackKey;
+  let latestSuccessfulUrl = null;
+  let finished = false;
 
-  const artworkUrl = `/artwork?track_id=${encodeURIComponent(trackKey)}&t=${Date.now()}`;
-  const image = new Image();
+  const loadArtwork = () => {
+    if (finished || currentTrackKey !== trackKey) return;
 
-  image.onload = () => {
-    if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
+    const artworkUrl = `/artwork?track_id=${encodeURIComponent(trackKey)}&t=${Date.now()}`;
+    const image = new Image();
 
-    artworkLoadedTrackKey = trackKey;
-    artworkRequestKey = null;
+    image.onload = () => {
+      if (finished || currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
+      latestSuccessfulUrl = artworkUrl;
+    };
 
-    if (artworkRetryTimer !== null) {
-      window.clearTimeout(artworkRetryTimer);
-      artworkRetryTimer = null;
+    image.onerror = () => {
+      // Keep collecting. A temporary 404/failed load is expected while metadata settles.
+    };
+
+    image.src = artworkUrl;
+  };
+
+  clearArtworkCollectionTimers();
+
+  // Start immediately, then continue sampling for the whole collection window.
+  loadArtwork();
+  artworkCollectionTimer = window.setInterval(loadArtwork, artworkCollectionIntervalMs);
+
+  artworkCollectionEndTimer = window.setTimeout(() => {
+    artworkCollectionEndTimer = null;
+    if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
+      clearArtworkCollectionTimers();
+      return;
     }
 
-    swapArtwork(artwork, artworkUrl, data.playing);
-  };
+    finished = true;
+    if (artworkCollectionTimer !== null) {
+      window.clearInterval(artworkCollectionTimer);
+      artworkCollectionTimer = null;
+    }
 
-  image.onerror = () => {
-    if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
+    if (latestSuccessfulUrl !== null) {
+      artworkLoadedTrackKey = trackKey;
+      artworkRequestKey = null;
 
-    artworkRequestKey = null;
-    scheduleArtworkRetry(trackKey, data, artwork, 500);
-  };
+      if (artworkRetryTimer !== null) {
+        window.clearTimeout(artworkRetryTimer);
+        artworkRetryTimer = null;
+      }
 
-  image.src = artworkUrl;
+      swapArtwork(artwork, latestSuccessfulUrl, data.playing);
+    } else {
+      artworkRequestKey = null;
+      scheduleArtworkRetry(trackKey, data, artwork, 500);
+    }
+  }, artworkCollectionDurationMs);
 }
 
 async function updateNowPlaying() {
@@ -331,8 +380,9 @@ async function updateNowPlaying() {
         window.clearTimeout(artworkRetryTimer);
         artworkRetryTimer = null;
       }
+      clearArtworkCollectionTimers();
 
-      // Keep the current artwork visible until the new HTTP image is loaded.
+      // Keep the current artwork visible while the new artwork is collected.
       requestArtwork(trackKey, data, artwork);
     } else if (artworkLoadedTrackKey !== trackKey && artworkRequestKey === null) {
       requestArtwork(trackKey, data, artwork);
