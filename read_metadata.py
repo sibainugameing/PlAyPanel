@@ -3,11 +3,13 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from shairport import DEFAULT_PIPE, follow_metadata_pipe
+from metadata import DEFAULT_PIPE, follow_metadata_pipe
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Read Shairport Sync metadata for PlayPanel")
+    parser = argparse.ArgumentParser(
+        description="Read Shairport Sync metadata for PlayPanel"
+    )
     parser.add_argument(
         "--pipe",
         default=str(DEFAULT_PIPE),
