@@ -1,70 +1,44 @@
 from __future__ import annotations
 
-import threading
-from pathlib import Path
+from flask import Flask, jsonify, render_template, send_file
+from io import BytesIO
 
-from flask import Flask, jsonify
-
-from shairport import DEFAULT_PIPE, TrackMetadata, follow_metadata_pipe
+from metadata import DEFAULT_PIPE, detect_image_type
+from metadata_service import MetadataService
 
 
 app = Flask(__name__)
-
-METADATA_PIPE = DEFAULT_PIPE
-
-_latest = TrackMetadata()
-_lock = threading.Lock()
-
-
-def metadata_worker() -> None:
-    global _latest
-
-    while True:
-        try:
-            for state in follow_metadata_pipe(METADATA_PIPE):
-                with _lock:
-                    _latest = TrackMetadata(
-                        title=state.title,
-                        artist=state.artist,
-                        album=state.album,
-                        album_artist=state.album_artist,
-                        genre=state.genre,
-                        composer=state.composer,
-                        artwork=state.artwork,
-                        playing=state.playing,
-                        client_name=state.client_name,
-                    )
-        except (FileNotFoundError, OSError):
-            # Shairport Sync may be stopped or the metadata pipe may not exist yet.
-            # Retry without taking down the web server.
-            threading.Event().wait(2)
-
-
-def start_metadata_worker() -> None:
-    thread = threading.Thread(target=metadata_worker, name="shairport-metadata", daemon=True)
-    thread.start()
+metadata_service = MetadataService(DEFAULT_PIPE)
 
 
 @app.get("/")
 def index():
-    return jsonify(
-        {
-            "app": "PlayPanel",
-            "status": "ok",
-            "metadata_pipe": str(METADATA_PIPE),
-            "metadata_pipe_exists": METADATA_PIPE.exists(),
-        }
-    )
+    return render_template("index.html")
 
 
 @app.get("/now-playing.json")
 def now_playing():
-    with _lock:
-        data = _latest.as_dict()
+    state = metadata_service.snapshot()
+    return jsonify(state.as_dict())
 
-    return jsonify(data)
+
+@app.get("/artwork")
+def artwork():
+    state = metadata_service.snapshot()
+    if state.artwork is None:
+        return ("", 404)
+
+    image_type = detect_image_type(state.artwork)
+    if image_type is None:
+        return ("", 415)
+
+    return send_file(
+        BytesIO(state.artwork),
+        mimetype=image_type,
+        max_age=0,
+    )
 
 
 if __name__ == "__main__":
-    start_metadata_worker()
+    metadata_service.start()
     app.run(host="0.0.0.0", port=8765, debug=True, use_reloader=False)
