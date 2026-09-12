@@ -2,6 +2,7 @@ let lastTrackKey = null;
 let artworkRequestKey = null;
 let currentArtworkUrl = null;
 let artworkSwapTimer = null;
+let recordTransitionTimer = null;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -92,9 +93,24 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
     return;
   }
 
-  if (recordChangeEnabled) {
-    // Clone the CURRENT record BEFORE replacing its artwork. This guarantees
-    // that the record leaving the stage always contains the previous cover.
+  const changeDuration = parseFloat(
+    getComputedStyle(document.documentElement)
+      .getPropertyValue('--record-change-duration')
+  ) || 1200;
+
+  if (recordTransitionTimer !== null) {
+    window.clearTimeout(recordTransitionTimer);
+    recordTransitionTimer = null;
+  }
+
+  if (!recordChangeEnabled) {
+    artwork.src = newArtworkUrl;
+    artwork.hidden = false;
+    setArtworkGlow(newArtworkUrl);
+    applyRecordRotation(record, playing);
+  } else {
+    // Keep the current record untouched while it leaves. The new artwork is
+    // not assigned until the outgoing record has completely disappeared.
     const oldRecord = record.cloneNode(true);
     const clonedArtwork = oldRecord.querySelector('#artwork');
 
@@ -106,38 +122,34 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
     oldRecord.classList.add('record--exit');
     recordStage.appendChild(oldRecord);
 
-    // Only now replace the artwork on the current record with the new cover.
-    artwork.src = newArtworkUrl;
-    artwork.hidden = false;
-    setArtworkGlow(newArtworkUrl);
-
     record.classList.remove('record--spinning', 'record--enter');
-    void record.offsetWidth;
-    record.classList.add('record--enter');
+    record.style.visibility = 'hidden';
 
-    const handleEntranceEnd = (event) => {
-      if (event.animationName !== 'record-enter') {
+    recordTransitionTimer = window.setTimeout(() => {
+      if (!record.isConnected) {
         return;
       }
-      record.removeEventListener('animationend', handleEntranceEnd);
-      finishRecordEntrance(record, playing);
-    };
 
-    record.addEventListener('animationend', handleEntranceEnd);
+      artwork.src = newArtworkUrl;
+      artwork.hidden = false;
+      setArtworkGlow(newArtworkUrl);
 
-    const changeDuration = parseFloat(
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--record-change-duration')
-    ) || 1200;
+      record.style.visibility = '';
+      void record.offsetWidth;
+      record.classList.add('record--enter');
 
-    window.setTimeout(() => {
+      const handleEntranceEnd = (event) => {
+        if (event.animationName !== 'record-enter') {
+          return;
+        }
+        record.removeEventListener('animationend', handleEntranceEnd);
+        finishRecordEntrance(record, playing);
+      };
+
+      record.addEventListener('animationend', handleEntranceEnd);
       oldRecord.remove();
-    }, changeDuration + 60);
-  } else {
-    artwork.src = newArtworkUrl;
-    artwork.hidden = false;
-    setArtworkGlow(newArtworkUrl);
-    applyRecordRotation(record, playing);
+      recordTransitionTimer = null;
+    }, changeDuration + 20);
   }
 
   if (infoChangeEnabled) {
@@ -159,8 +171,6 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
 function showNewArtwork(artwork, objectUrl, playing) {
   const previousUrl = currentArtworkUrl;
 
-  // Animate first: animateTrackChange captures the old cover before it swaps
-  // the image on the live record.
   animateTrackChange(artwork, objectUrl, playing);
   currentArtworkUrl = objectUrl;
 
@@ -176,7 +186,7 @@ function showNewArtwork(artwork, objectUrl, playing) {
     artworkSwapTimer = window.setTimeout(() => {
       URL.revokeObjectURL(previousUrl);
       artworkSwapTimer = null;
-    }, changeDuration + 250);
+    }, changeDuration * 2 + 250);
   }
 }
 
