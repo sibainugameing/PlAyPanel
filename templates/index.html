@@ -62,6 +62,7 @@
   <script>
     window.PLAYPANEL_CONFIG = {
       pollIntervalMs: {{ config.poll_interval_ms }},
+      artworkRetryIntervalMs: {{ config.artwork_retry_interval_ms }},
       animation: {
         enabled: {{ 'true' if config.animations_enabled else 'false' }},
         recordRotationEnabled: {{ 'true' if config.record_rotation_enabled else 'false' }},
