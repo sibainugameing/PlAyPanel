@@ -1,3 +1,5 @@
+let lastTrackKey = null;
+
 async function updateNowPlaying() {
   try {
     const response = await fetch('/now-playing.json', { cache: 'no-store' });
@@ -14,13 +16,25 @@ async function updateNowPlaying() {
     const status = document.querySelector('#status');
     status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
 
+    const trackKey = [
+      data.title || '',
+      data.artist || '',
+      data.album || '',
+    ].join('\u0001');
+
     const artwork = document.querySelector('#artwork');
-    if (data.has_artwork) {
-      artwork.src = `/artwork?t=${Date.now()}`;
-      artwork.hidden = false;
-    } else {
-      artwork.hidden = true;
-      artwork.removeAttribute('src');
+
+    // Reload artwork only when the track changes.
+    if (trackKey !== lastTrackKey) {
+      lastTrackKey = trackKey;
+
+      if (data.has_artwork) {
+        artwork.src = `/artwork?t=${Date.now()}`;
+        artwork.hidden = false;
+      } else {
+        artwork.hidden = true;
+        artwork.removeAttribute('src');
+      }
     }
   } catch (error) {
     document.querySelector('#status').textContent = '接続エラー';
@@ -29,4 +43,4 @@ async function updateNowPlaying() {
 }
 
 updateNowPlaying();
-setInterval(updateNowPlaying, 1000);
+setInterval(updateNowPlaying, {{ settings.poll_interval_ms }});
