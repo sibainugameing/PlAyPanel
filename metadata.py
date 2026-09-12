@@ -15,7 +15,6 @@ DEFAULT_PIPE = Path(
     os.environ.get("PLAYPANEL_METADATA_PIPE", "/tmp/shairport-sync-metadata")
 )
 
-
 HEADER_PATTERN = re.compile(
     r"^<item><type>"
     r"([0-9A-Fa-f]{8})"
@@ -39,7 +38,6 @@ def parse_header(line: str) -> tuple[str, str, int] | None:
     match = HEADER_PATTERN.match(line)
     if match is None:
         return None
-
     return (
         hex_to_code(match.group(1)),
         hex_to_code(match.group(2)),
@@ -50,7 +48,6 @@ def parse_header(line: str) -> tuple[str, str, int] | None:
 def decode_base64(data: bytes) -> bytes:
     if not data:
         return b""
-
     try:
         return base64.b64decode(data, validate=True)
     except (binascii.Error, ValueError) as exc:
@@ -160,7 +157,10 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
             return
         if detect_image_type(payload) is not None:
             state.artwork = payload
-            state.artwork_track_id = state.track_id
+            if state.track_id:
+                state.artwork_track_id = state.track_id
+            else:
+                state.artwork_track_id = ""
         else:
             print(
                 f"Unknown cover image format ({len(payload)} bytes)",
@@ -170,18 +170,23 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
 
     if code == "mper":
         new_track_id = _metadata_text(payload)
-        if new_track_id and new_track_id != state.track_id:
-            old_artwork_track_id = state.artwork_track_id
-            state.track_id = new_track_id
+        if not new_track_id or new_track_id == state.track_id:
+            return
 
-            if state.artwork is not None and old_artwork_track_id == "":
+        old_track_id = state.track_id
+        old_artwork_track_id = state.artwork_track_id
+        state.track_id = new_track_id
+
+        if state.artwork is not None:
+            if not old_artwork_track_id:
                 state.artwork_track_id = new_track_id
-            elif state.artwork is not None and old_artwork_track_id != new_track_id:
+            elif old_artwork_track_id == old_track_id:
+                state.artwork_track_id = new_track_id
+            elif old_artwork_track_id != new_track_id:
                 state.artwork = None
                 state.artwork_track_id = ""
         return
 
-    # AirPlay 2 connection lifecycle messages.
     if code == "conn":
         state.connected = True
         return
@@ -191,7 +196,6 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         state.playing = False
         return
 
-    # These messages are useful for classic AirPlay sessions too.
     if code in {"pbeg", "prsm"}:
         state.connected = True
         state.playing = True
@@ -225,6 +229,7 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
 
         if not state.track_id or state.track_id.startswith("fallback:"):
             state.track_id = _fallback_track_id(state)
+
         if state.artwork is not None and not state.artwork_track_id and state.track_id:
             state.artwork_track_id = state.track_id
         return
