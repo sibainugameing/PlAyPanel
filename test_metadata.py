@@ -9,7 +9,7 @@ import zlib
 from pathlib import Path
 
 
-DEFAULT_PIPE = Path("/tmp/shairport-sync-metadata")
+DEFAULT_PIPE = Path("/tmp/playpanel-test-metadata")
 
 TRACKS = [
     {
@@ -106,7 +106,7 @@ def main() -> None:
     print("PlayPanel test metadata sender", flush=True)
     print(f"FIFO: {args.pipe}", flush=True)
     print("Stop with Ctrl+C.", flush=True)
-    print("Use only when the real Shairport Sync metadata pipe is not in use.", flush=True)
+    print("This is a separate test FIFO; it does not use the real Shairport Sync pipe.", flush=True)
 
     with args.pipe.open("wb", buffering=0) as stream:
         for index, track in enumerate(TRACKS, start=1):
