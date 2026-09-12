@@ -26,8 +26,32 @@ artist_size = "clamp(1.35rem, 2.25vw, 2.15rem)"
 album_size = "1rem"
 
 [animation]
-# Set to false to disable all PlayPanel UI animations.
+# Master switch for all PlayPanel animations.
 enabled = true
+
+# Continuous vinyl rotation while the player is playing.
+record_rotation_enabled = true
+# Full revolutions per minute.
+record_rotation_speed = 18.0
+
+# Record-to-record slide when the track changes.
+record_change_enabled = true
+# Duration of the record exchange in milliseconds.
+record_change_duration = 760
+# Horizontal travel distance as a percentage of the record stage.
+record_change_distance = 120
+# Additional rotation in degrees during the exchange.
+record_change_rotation = 22.0
+
+# Song information fade/slide when the track changes.
+info_change_enabled = true
+# Duration in milliseconds.
+info_change_duration = 420
+# Vertical travel distance in pixels.
+info_change_distance = 16
+
+# CSS easing curve used by the change animations.
+easing = "cubic-bezier(0.22, 1, 0.36, 1)"
 
 [behavior]
 # Browser refresh interval for metadata.
