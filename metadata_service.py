@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+import threading
+
+from metadata import DEFAULT_PIPE, follow_metadata_pipe
+from models import TrackMetadata
+
+
+class MetadataService:
+    def __init__(self, pipe=DEFAULT_PIPE) -> None:
+        self.pipe = pipe
+        self._latest = TrackMetadata()
+        self._lock = threading.Lock()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if self._thread is not None and self._thread.is_alive():
+            return
+
+        self._thread = threading.Thread(
+            target=self._worker,
+            name="shairport-metadata",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def _worker(self) -> None:
+        for state in follow_metadata_pipe(self.pipe):
+            with self._lock:
+                self._latest = TrackMetadata(
+                    title=state.title,
+                    artist=state.artist,
+                    album=state.album,
+                    album_artist=state.album_artist,
+                    genre=state.genre,
+                    composer=state.composer,
+                    artwork=state.artwork,
+                    playing=state.playing,
+                    client_name=state.client_name,
+                )
+
+    def snapshot(self) -> TrackMetadata:
+        with self._lock:
+            state = self._latest
+            return TrackMetadata(
+                title=state.title,
+                artist=state.artist,
+                album=state.album,
+                album_artist=state.album_artist,
+                genre=state.genre,
+                composer=state.composer,
+                artwork=state.artwork,
+                playing=state.playing,
+                client_name=state.client_name,
+            )
