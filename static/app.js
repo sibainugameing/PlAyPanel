@@ -23,8 +23,11 @@ async function updateNowPlaying() {
     ].join('\u0001');
 
     const artwork = document.querySelector('#artwork');
+    const needsArtworkUpdate =
+      trackKey !== lastTrackKey ||
+      (data.has_artwork && artwork.hidden);
 
-    if (trackKey !== lastTrackKey) {
+    if (needsArtworkUpdate) {
       lastTrackKey = trackKey;
 
       if (data.has_artwork) {
