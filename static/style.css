@@ -37,6 +37,22 @@ body::before {
   opacity: 0.22;
 }
 
+body::after {
+  content: "";
+  position: fixed;
+  inset: -18%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.035), transparent 34%);
+  opacity: 0;
+  transform: scale(0.96);
+  transition: opacity 900ms ease, transform 1400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.is-playing::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
 .panel {
   width: min(var(--panel-max-width, 1180px), 92vw);
   display: grid;
@@ -58,6 +74,27 @@ body::before {
   display: grid;
   place-items: center;
   overflow: hidden;
+  perspective: 1000px;
+}
+
+.record-stage::before {
+  content: "";
+  position: absolute;
+  inset: 4%;
+  z-index: -1;
+  border-radius: 50%;
+  background-image: var(--artwork-image, none);
+  background-position: center;
+  background-size: cover;
+  filter: blur(48px) saturate(1.25);
+  opacity: 0;
+  transform: scale(0.72);
+  transition: opacity 800ms ease, transform 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.record-stage.has-artwork-glow::before {
+  opacity: 0.22;
+  transform: scale(0.9);
 }
 
 .record-shadow {
@@ -68,6 +105,12 @@ body::before {
   filter: blur(30px);
   opacity: 0.75;
   transform: translateY(28px) scale(0.92);
+  transition: transform 760ms cubic-bezier(0.22, 1, 0.36, 1), opacity 760ms ease;
+}
+
+body.is-playing .record-shadow {
+  transform: translateY(32px) scale(0.94);
+  opacity: 0.82;
 }
 
 .record {
@@ -85,6 +128,19 @@ body::before {
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     inset 0 0 50px rgba(0, 0, 0, 0.58),
     0 30px 80px rgba(0, 0, 0, 0.55);
+  will-change: transform;
+  transform-origin: center;
+}
+
+.record::before {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  z-index: 2;
+  border-radius: 50%;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.1), transparent 32%, transparent 66%, rgba(255, 255, 255, 0.035));
+  mix-blend-mode: screen;
+  pointer-events: none;
 }
 
 .record::after {
@@ -125,6 +181,7 @@ body::before {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transform: scale(1.01);
 }
 
 .label-fallback {
@@ -166,6 +223,11 @@ body::before {
   border-radius: 50%;
   background: currentColor;
   box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.06);
+  transition: box-shadow 300ms ease, transform 300ms ease;
+}
+
+body.is-playing .status-dot {
+  animation: status-pulse 1.8s ease-in-out infinite;
 }
 
 .track-copy {
@@ -228,6 +290,7 @@ h1.title--extreme {
   height: 1px;
   margin: 40px 0 18px;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), transparent);
+  transform-origin: left center;
 }
 
 .product-name {
@@ -245,7 +308,8 @@ h1.title--extreme {
 
 .record--enter {
   animation:
-    record-enter var(--record-change-duration, 760ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
+    record-enter var(--record-change-duration, 760ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both,
+    record-spin var(--record-rotation-duration, 3.333s) linear infinite;
 }
 
 .record--exit {
@@ -259,6 +323,26 @@ h1.title--extreme {
     info-change var(--info-change-duration, 420ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
+.info--change .now-playing {
+  animation: info-label-change var(--info-change-duration, 420ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.info--change h1 {
+  animation: info-title-change var(--info-change-duration, 420ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.info--change .artist {
+  animation: info-detail-change var(--info-change-duration, 420ms) 45ms var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.info--change .album {
+  animation: info-detail-change var(--info-change-duration, 420ms) 75ms var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.info--change .info-line {
+  animation: info-line-change var(--info-change-duration, 420ms) 90ms var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
 @keyframes record-spin {
   from {
     transform: rotate(0deg);
@@ -269,49 +353,141 @@ h1.title--extreme {
 }
 
 @keyframes record-enter {
-  from {
+  0% {
     translate: var(--record-change-distance, 120%) 0;
     rotate: var(--record-change-rotation, 22deg);
-    opacity: 0.4;
+    scale: 0.88;
+    opacity: 0;
+    filter: blur(5px);
   }
-  to {
+  55% {
+    translate: -3% 0;
+    rotate: -3deg;
+    scale: 1.025;
+    opacity: 1;
+    filter: blur(0);
+  }
+  78% {
+    translate: 1.2% 0;
+    rotate: 1deg;
+    scale: 0.995;
+  }
+  100% {
     translate: 0 0;
     rotate: 0deg;
+    scale: 1;
     opacity: 1;
+    filter: blur(0);
   }
 }
 
 @keyframes record-exit {
-  from {
+  0% {
     translate: 0 0;
     rotate: 0deg;
+    scale: 1;
     opacity: 1;
+    filter: blur(0);
   }
-  to {
+  45% {
+    translate: -8% 0;
+    rotate: -4deg;
+    scale: 0.99;
+    opacity: 0.92;
+  }
+  100% {
     translate: calc(-1 * var(--record-change-distance, 120%)) 0;
     rotate: calc(-1 * var(--record-change-rotation, 22deg));
-    opacity: 0.25;
+    scale: 0.9;
+    opacity: 0;
+    filter: blur(5px);
   }
 }
 
 @keyframes info-change {
+  0% {
+    opacity: 0.35;
+    translate: 28px var(--info-change-distance, 16px);
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes info-label-change {
   from {
-    opacity: 0.25;
-    translate: 0 var(--info-change-distance, 16px);
+    opacity: 0;
+    translate: 0 10px;
   }
   to {
     opacity: 1;
     translate: 0 0;
+  }
+}
+
+@keyframes info-title-change {
+  from {
+    opacity: 0;
+    translate: 22px 0;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+    filter: blur(0);
+  }
+}
+
+@keyframes info-detail-change {
+  from {
+    opacity: 0;
+    translate: 14px 0;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes info-line-change {
+  from {
+    scale: 0.35 1;
+    opacity: 0;
+  }
+  to {
+    scale: 1 1;
+    opacity: 1;
+  }
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.06);
+  }
+  50% {
+    transform: scale(1.16);
+    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.025);
   }
 }
 
 .animations-disabled .record,
 .animations-disabled .record--enter,
 .animations-disabled .record--exit,
-.animations-disabled .info--change {
+.animations-disabled .info--change,
+.animations-disabled .status-dot {
   animation: none !important;
   translate: none !important;
   rotate: none !important;
+  scale: none !important;
+  filter: none !important;
+}
+
+.animations-disabled body::after,
+.animations-disabled .record-stage::before {
+  transition: none !important;
 }
 
 @media (max-width: 900px) {
