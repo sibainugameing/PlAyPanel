@@ -35,8 +35,11 @@ class MetadataService:
                     genre=state.genre,
                     composer=state.composer,
                     artwork=state.artwork,
+                    artwork_track_id=state.artwork_track_id,
                     playing=state.playing,
+                    connected=state.connected,
                     client_name=state.client_name,
+                    track_id=state.track_id,
                 )
 
     def snapshot(self) -> TrackMetadata:
@@ -50,6 +53,9 @@ class MetadataService:
                 genre=state.genre,
                 composer=state.composer,
                 artwork=state.artwork,
+                artwork_track_id=state.artwork_track_id,
                 playing=state.playing,
+                connected=state.connected,
                 client_name=state.client_name,
+                track_id=state.track_id,
             )
