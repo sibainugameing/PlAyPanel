@@ -10,7 +10,7 @@ AirPlay で再生している曲のタイトル・アーティスト・アルバ
 
 > **画像①：PlayPanel のメイン画面**
 >
-> `docs/images/playpanel-main.png` を配置して、この部分を画像表示に置き換える予定です。
+<img width="2850" height="1892" alt="Image" src="https://github.com/user-attachments/assets/2481690a-2072-483b-8b05-bcb3d4187c2e" />
 
 レコードをイメージしたビジュアルと、大きな曲名・アーティスト表示を組み合わせた UI です。
 
