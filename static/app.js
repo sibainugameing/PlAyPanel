@@ -19,6 +19,25 @@ document.documentElement.style.setProperty(
   `${recordRotationDurationSeconds}s`
 );
 
+function updateTitleSize(title) {
+  const titleElement = document.querySelector('#title');
+  if (!titleElement) {
+    return;
+  }
+
+  titleElement.classList.remove('title--long', 'title--very-long', 'title--extreme');
+
+  const length = Array.from(title).length;
+
+  if (length >= 80) {
+    titleElement.classList.add('title--extreme');
+  } else if (length >= 50) {
+    titleElement.classList.add('title--very-long');
+  } else if (length >= 32) {
+    titleElement.classList.add('title--long');
+  }
+}
+
 function applyRecordRotation(record, playing) {
   const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
   record.classList.toggle('record--spinning', shouldSpin);
@@ -112,7 +131,9 @@ async function updateNowPlaying() {
 
     const data = await response.json();
 
-    document.querySelector('#title').textContent = data.title || '---';
+    const title = data.title || '---';
+    document.querySelector('#title').textContent = title;
+    updateTitleSize(title);
     document.querySelector('#artist').textContent = data.artist || '---';
     document.querySelector('#album').textContent = data.album || '---';
 
