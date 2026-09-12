@@ -58,3 +58,12 @@ easing = "cubic-bezier(0.25, 0.85, 0.3, 1)"
 poll_interval_ms = 1000
 # Retry interval for album artwork that is temporarily missing or unavailable.
 artwork_retry_interval_ms = 3000
+
+[display]
+# Small clock at the top of the panel.
+clock_enabled = true
+
+# Dim the entire panel after a period without user interaction.
+screen_blank_enabled = true
+# Minutes without interaction before the screen blanks.
+screen_blank_timeout_minutes = 30
