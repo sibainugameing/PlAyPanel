@@ -11,12 +11,13 @@ const recordChangeEnabled = animationConfig.recordChangeEnabled !== false;
 const infoChangeEnabled = animationConfig.infoChangeEnabled !== false;
 const pollIntervalMs = config.pollIntervalMs ?? 1000;
 
-document.body.classList.toggle('animations-disabled', !animationsEnabled);
-document.documentElement.style.setProperty('--record-rotation-speed', `${recordRotationSpeed}rpm`);
+const recordRotationDurationSeconds = 60 / recordRotationSpeed;
 
-function clearAnimationClasses(element) {
-  element.classList.remove('record--enter', 'record--spinning', 'info--change');
-}
+document.body.classList.toggle('animations-disabled', !animationsEnabled);
+document.documentElement.style.setProperty(
+  '--record-rotation-duration',
+  `${recordRotationDurationSeconds}s`
+);
 
 function applyRecordRotation(record, playing) {
   const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
@@ -74,6 +75,7 @@ function animateTrackChange(artwork, hasArtwork, playing) {
     window.setTimeout(() => {
       oldRecord.remove();
       record.classList.remove('record--enter');
+      applyRecordRotation(record, playing);
     }, changeDuration + 30);
   } else {
     if (hasArtwork) {
