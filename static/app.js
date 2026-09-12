@@ -24,7 +24,6 @@ async function updateNowPlaying() {
 
     const artwork = document.querySelector('#artwork');
 
-    // Reload artwork only when the track changes.
     if (trackKey !== lastTrackKey) {
       lastTrackKey = trackKey;
 
@@ -42,5 +41,7 @@ async function updateNowPlaying() {
   }
 }
 
+const pollIntervalMs = window.PLAYPANEL_CONFIG?.pollIntervalMs ?? 1000;
+
 updateNowPlaying();
-setInterval(updateNowPlaying, 1000);
+setInterval(updateNowPlaying, pollIntervalMs);
