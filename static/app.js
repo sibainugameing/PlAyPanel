@@ -1,5 +1,7 @@
 let lastTrackKey = null;
 let artworkRequestKey = null;
+let currentArtworkUrl = null;
+let artworkSwapTimer = null;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -94,8 +96,6 @@ function animateTrackChange(artwork, hasArtwork, playing) {
   if (!record || !recordStage || !info || !animationsEnabled) {
     if (hasArtwork) {
       artwork.hidden = false;
-    } else {
-      hideArtwork(artwork);
     }
     if (record) {
       finishRecordEntrance(record, playing);
@@ -115,12 +115,6 @@ function animateTrackChange(artwork, hasArtwork, playing) {
     oldRecord.classList.remove('record--spinning', 'record--enter', 'record--exit');
     oldRecord.classList.add('record--exit');
     recordStage.appendChild(oldRecord);
-
-    if (hasArtwork) {
-      artwork.hidden = false;
-    } else {
-      hideArtwork(artwork);
-    }
 
     record.classList.remove('record--spinning', 'record--enter');
     void record.offsetWidth;
@@ -145,11 +139,6 @@ function animateTrackChange(artwork, hasArtwork, playing) {
       oldRecord.remove();
     }, changeDuration + 60);
   } else {
-    if (hasArtwork) {
-      artwork.hidden = false;
-    } else {
-      hideArtwork(artwork);
-    }
     applyRecordRotation(record, playing);
   }
 
@@ -169,33 +158,88 @@ function animateTrackChange(artwork, hasArtwork, playing) {
   }
 }
 
-function requestArtwork(trackKey, data, artwork) {
+function showNewArtwork(artwork, objectUrl) {
+  const previousUrl = currentArtworkUrl;
+
+  showArtwork(artwork, objectUrl);
+  currentArtworkUrl = objectUrl;
+
+  if (artworkSwapTimer !== null) {
+    window.clearTimeout(artworkSwapTimer);
+  }
+
+  if (previousUrl?.startsWith('blob:')) {
+    const changeDuration = parseFloat(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--record-change-duration')
+    ) || 760;
+    artworkSwapTimer = window.setTimeout(() => {
+      URL.revokeObjectURL(previousUrl);
+      artworkSwapTimer = null;
+    }, changeDuration + 250);
+  }
+}
+
+async function requestArtwork(trackKey, data, artwork) {
   if (artworkRequestKey === trackKey) {
     return;
   }
 
   artworkRequestKey = trackKey;
 
-  const loadArtwork = (attempt = 1) => {
+  const loadArtwork = async (attempt = 1) => {
     if (artworkRequestKey !== trackKey) {
       return;
     }
 
-    const nextArtworkUrl = `/artwork?t=${Date.now()}`;
-    const image = new Image();
+    try {
+      const response = await fetch(`/artwork?t=${Date.now()}`, {
+        cache: 'no-store',
+      });
 
-    image.onload = () => {
-      if (artworkRequestKey !== trackKey) {
-        return;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      showArtwork(artwork, nextArtworkUrl);
-      lastTrackKey = trackKey;
-      artworkRequestKey = null;
-      animateTrackChange(artwork, true, data.playing);
-    };
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.startsWith('image/')) {
+        throw new Error(`Unexpected content type: ${contentType || 'unknown'}`);
+      }
 
-    image.onerror = () => {
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const image = new Image();
+
+      image.onload = () => {
+        if (artworkRequestKey !== trackKey) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+
+        showNewArtwork(artwork, objectUrl);
+        lastTrackKey = trackKey;
+        artworkRequestKey = null;
+        animateTrackChange(artwork, true, data.playing);
+      };
+
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+
+        if (artworkRequestKey !== trackKey) {
+          return;
+        }
+
+        if (attempt < 3) {
+          window.setTimeout(() => loadArtwork(attempt + 1), 150);
+          return;
+        }
+
+        artworkRequestKey = null;
+        console.error(`PlayPanel: artwork failed to decode after ${attempt} attempts; keeping current artwork`);
+      };
+
+      image.src = objectUrl;
+    } catch (error) {
       if (artworkRequestKey !== trackKey) {
         return;
       }
@@ -206,10 +250,8 @@ function requestArtwork(trackKey, data, artwork) {
       }
 
       artworkRequestKey = null;
-      console.error(`PlayPanel: artwork failed to load after ${attempt} attempts; will retry`);
-    };
-
-    image.src = nextArtworkUrl;
+      console.error(`PlayPanel: artwork request failed after ${attempt} attempts; keeping current artwork`, error);
+    }
   };
 
   loadArtwork();
@@ -246,10 +288,10 @@ async function updateNowPlaying() {
     if (trackChanged && data.has_artwork) {
       requestArtwork(trackKey, data, artwork);
     } else if (trackChanged && !data.has_artwork) {
+      // Metadata can arrive before PICT. Keep the current cover until a valid
+      // new image is received instead of blanking the record.
       lastTrackKey = trackKey;
       artworkRequestKey = null;
-      hideArtwork(artwork);
-      animateTrackChange(artwork, false, data.playing);
     }
   } catch (error) {
     document.querySelector('#status').textContent = '接続エラー';
