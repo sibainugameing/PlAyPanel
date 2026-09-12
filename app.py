@@ -1,14 +1,22 @@
 from __future__ import annotations
 
-from flask import Flask, jsonify, render_template, send_file
 from io import BytesIO
 
+from flask import Flask, jsonify, render_template, send_file
+
+from config import load_config
 from metadata import DEFAULT_PIPE, detect_image_type
 from metadata_service import MetadataService
 
 
 app = Flask(__name__)
+config = load_config()
 metadata_service = MetadataService(DEFAULT_PIPE)
+
+
+@app.context_processor
+def template_settings():
+    return {"settings": config}
 
 
 @app.get("/")
