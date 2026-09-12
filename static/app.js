@@ -43,4 +43,4 @@ async function updateNowPlaying() {
 }
 
 updateNowPlaying();
-setInterval(updateNowPlaying, {{ settings.poll_interval_ms }});
+setInterval(updateNowPlaying, 1000);
