@@ -34,6 +34,9 @@ class PlayPanelConfig:
     animation_easing: str = "cubic-bezier(0.22, 1, 0.36, 1)"
     poll_interval_ms: int = 1000
     artwork_retry_interval_ms: int = 3000
+    clock_enabled: bool = True
+    screen_blank_enabled: bool = True
+    screen_blank_timeout_minutes: int = 30
 
 
 def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
@@ -51,6 +54,7 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
     typography = raw.get("typography", {})
     animation = raw.get("animation", {})
     behavior = raw.get("behavior", {})
+    display = raw.get("display", {})
 
     return PlayPanelConfig(
         host=str(server.get("host", defaults.host)),
@@ -69,7 +73,7 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         record_rotation_speed=float(animation.get("record_rotation_speed", defaults.record_rotation_speed)),
         record_change_enabled=bool(animation.get("record_change_enabled", defaults.record_change_enabled)),
         record_change_duration=int(animation.get("record_change_duration", defaults.record_change_duration)),
-        record_change_distance=int(animation.get("record_change_distance", defaults.record_change_distance)),
+        record_change_distance=int(layout.get("record_change_distance", animation.get("record_change_distance", defaults.record_change_distance))),
         record_change_rotation=float(animation.get("record_change_rotation", defaults.record_change_rotation)),
         info_change_enabled=bool(animation.get("info_change_enabled", defaults.info_change_enabled)),
         info_change_duration=int(animation.get("info_change_duration", defaults.info_change_duration)),
@@ -78,5 +82,10 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         poll_interval_ms=int(behavior.get("poll_interval_ms", defaults.poll_interval_ms)),
         artwork_retry_interval_ms=int(
             behavior.get("artwork_retry_interval_ms", defaults.artwork_retry_interval_ms)
+        ),
+        clock_enabled=bool(display.get("clock_enabled", defaults.clock_enabled)),
+        screen_blank_enabled=bool(display.get("screen_blank_enabled", defaults.screen_blank_enabled)),
+        screen_blank_timeout_minutes=int(
+            display.get("screen_blank_timeout_minutes", defaults.screen_blank_timeout_minutes)
         ),
     )
