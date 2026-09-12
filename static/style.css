@@ -57,6 +57,7 @@ body::before {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
+  overflow: hidden;
 }
 
 .record-shadow {
@@ -70,7 +71,8 @@ body::before {
 }
 
 .record {
-  position: relative;
+  position: absolute;
+  inset: 0;
   width: 100%;
   aspect-ratio: 1;
   border-radius: 50%;
@@ -222,6 +224,52 @@ h1 {
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
+}
+
+.record--enter {
+  animation: record-enter 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.record--exit {
+  z-index: 4;
+  animation: record-exit 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.info--change {
+  animation: info-change 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes record-enter {
+  from {
+    transform: translateX(110%) rotate(14deg) scale(0.94);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes record-exit {
+  from {
+    transform: translateX(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-110%) rotate(-14deg) scale(0.94);
+    opacity: 0.25;
+  }
+}
+
+@keyframes info-change {
+  from {
+    opacity: 0.25;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 900px) {
