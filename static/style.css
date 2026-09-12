@@ -14,16 +14,16 @@ body {
   place-items: center;
   overflow: hidden;
   background:
-    radial-gradient(circle at 30% 50%, #292929 0, #111 42%, #070707 100%);
-  color: #fff;
+    radial-gradient(circle at 30% 50%, #292929 0, var(--background-color) 42%, #070707 100%);
+  color: var(--text-color);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .panel {
-  width: min(1100px, 92vw);
+  width: min(var(--panel-max-width), 92vw);
   display: grid;
-  grid-template-columns: minmax(360px, 500px) 1fr;
-  gap: 70px;
+  grid-template-columns: minmax(360px, 1fr) minmax(280px, 1fr);
+  gap: var(--panel-gap);
   align-items: center;
 }
 
@@ -34,7 +34,7 @@ body {
 
 .record {
   position: relative;
-  width: min(70vw, 480px);
+  width: min(72vw, 680px);
   aspect-ratio: 1;
   border-radius: 50%;
   background:
@@ -55,7 +55,11 @@ body {
 
 .record-label {
   position: absolute;
-  inset: 29%;
+  top: 50%;
+  left: 50%;
+  width: min(55vw, var(--artwork-size));
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
   overflow: hidden;
   border-radius: 50%;
   background: #333;
@@ -74,7 +78,7 @@ body {
   inset: calc(50% - 7px);
   border-radius: 50%;
   background: #080808;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px var(--accent-color);
 }
 
 .info {
@@ -85,7 +89,8 @@ body {
   margin: 0 0 22px;
   font-size: 0.95rem;
   letter-spacing: 0.08em;
-  opacity: 0.65;
+  color: var(--accent-color);
+  opacity: 0.8;
 }
 
 h1,
@@ -96,20 +101,20 @@ h1,
 
 h1 {
   margin: 0;
-  font-size: clamp(2.5rem, 5vw, 5rem);
+  font-size: var(--title-size);
   line-height: 1.02;
   font-weight: 700;
 }
 
 .artist {
   margin: 20px 0 0;
-  font-size: clamp(1.5rem, 2.8vw, 2.4rem);
+  font-size: var(--artist-size);
   opacity: 0.88;
 }
 
 .album {
   margin: 10px 0 0;
-  font-size: 1.05rem;
+  font-size: var(--album-size);
   opacity: 0.55;
 }
 
@@ -126,6 +131,10 @@ h1 {
   }
 
   .record {
-    width: min(78vw, 420px);
+    width: min(82vw, 560px);
+  }
+
+  .record-label {
+    width: min(68vw, var(--artwork-size));
   }
 }
