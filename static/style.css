@@ -195,6 +195,19 @@ h1 {
   text-wrap: balance;
 }
 
+h1.title--long {
+  font-size: clamp(2.35rem, 4.2vw, 4.4rem);
+}
+
+h1.title--very-long {
+  font-size: clamp(1.95rem, 3.35vw, 3.5rem);
+}
+
+h1.title--extreme {
+  font-size: clamp(1.65rem, 2.75vw, 2.9rem);
+  line-height: 1.04;
+}
+
 .artist {
   margin: 24px 0 0;
   color: rgba(255, 255, 255, 0.82);
@@ -227,7 +240,7 @@ h1 {
 }
 
 .record--spinning {
-  animation: record-spin var(--record-rotation-speed, 18rpm) linear infinite;
+  animation: record-spin var(--record-rotation-duration, 3.333s) linear infinite;
 }
 
 .record--enter {
@@ -319,6 +332,20 @@ h1 {
 
   .info {
     padding: 0 4px;
+  }
+}
+
+@media (max-width: 900px) {
+  h1.title--long {
+    font-size: clamp(2rem, 7vw, 3.5rem);
+  }
+
+  h1.title--very-long {
+    font-size: clamp(1.7rem, 6vw, 2.8rem);
+  }
+
+  h1.title--extreme {
+    font-size: clamp(1.5rem, 5vw, 2.3rem);
   }
 }
 
