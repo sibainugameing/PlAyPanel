@@ -47,6 +47,16 @@ def artwork():
     )
 
 
+@app.get("/favicon.ico")
+def favicon():
+    return ("", 204)
+
+
 if __name__ == "__main__":
     metadata_service.start()
-    app.run(host="0.0.0.0", port=8765, debug=True, use_reloader=False)
+    app.run(
+        host=config.host,
+        port=config.port,
+        debug=True,
+        use_reloader=False,
+    )
