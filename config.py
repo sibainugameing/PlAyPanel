@@ -33,6 +33,7 @@ class PlayPanelConfig:
     info_change_distance: int = 16
     animation_easing: str = "cubic-bezier(0.22, 1, 0.36, 1)"
     poll_interval_ms: int = 1000
+    artwork_retry_interval_ms: int = 3000
 
 
 def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
@@ -75,4 +76,7 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         info_change_distance=int(animation.get("info_change_distance", defaults.info_change_distance)),
         animation_easing=str(animation.get("easing", defaults.animation_easing)),
         poll_interval_ms=int(behavior.get("poll_interval_ms", defaults.poll_interval_ms)),
+        artwork_retry_interval_ms=int(
+            behavior.get("artwork_retry_interval_ms", defaults.artwork_retry_interval_ms)
+        ),
     )
