@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
-from flask import Flask, jsonify, render_template, send_file
+from flask import Flask, jsonify, render_template, request, send_file
 
 from config import load_config
 from metadata import DEFAULT_PIPE, detect_image_type
@@ -33,12 +33,29 @@ def now_playing():
 @app.get("/artwork")
 def artwork():
     state = metadata_service.snapshot()
+    requested_track_id = request.args.get("track_id", "")
+
+    if not requested_track_id:
+        return jsonify({"error": "track_id is required"}), 400
+
     if state.artwork is None:
-        return ("", 404)
+        return jsonify({"error": "artwork_not_ready"}), 404
+
+    if state.artwork_track_id != requested_track_id:
+        return (
+            jsonify(
+                {
+                    "error": "artwork_track_mismatch",
+                    "current_track_id": state.track_id,
+                    "artwork_track_id": state.artwork_track_id,
+                }
+            ),
+            409,
+        )
 
     image_type = detect_image_type(state.artwork)
     if image_type is None:
-        return ("", 415)
+        return jsonify({"error": "unsupported_artwork_format"}), 415
 
     return send_file(
         BytesIO(state.artwork),
