@@ -27,6 +27,10 @@
     --animation-easing: {{ config.animation_easing }};
   "
 >
+  {% if config.clock_enabled %}
+  <time id="clock" class="clock" aria-label="現在時刻">--:--</time>
+  {% endif %}
+
   <main class="panel" aria-live="polite">
     <section class="visual" aria-label="アルバムアート">
       <div class="record-stage">
@@ -59,10 +63,19 @@
     </section>
   </main>
 
+  {% if config.screen_blank_enabled %}
+  <div id="screen-blank" class="screen-blank" aria-hidden="true"></div>
+  {% endif %}
+
   <script>
     window.PLAYPANEL_CONFIG = {
       pollIntervalMs: {{ config.poll_interval_ms }},
       artworkRetryIntervalMs: {{ config.artwork_retry_interval_ms }},
+      display: {
+        clockEnabled: {{ 'true' if config.clock_enabled else 'false' }},
+        screenBlankEnabled: {{ 'true' if config.screen_blank_enabled else 'false' }},
+        screenBlankTimeoutMinutes: {{ config.screen_blank_timeout_minutes }},
+      },
       animation: {
         enabled: {{ 'true' if config.animations_enabled else 'false' }},
         recordRotationEnabled: {{ 'true' if config.record_rotation_enabled else 'false' }},
