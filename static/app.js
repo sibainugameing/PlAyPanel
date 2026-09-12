@@ -288,10 +288,8 @@ async function updateNowPlaying() {
     if (trackChanged && data.has_artwork) {
       requestArtwork(trackKey, data, artwork);
     } else if (trackChanged && !data.has_artwork) {
-      // Metadata can arrive before PICT. Keep the current cover until a valid
-      // new image is received instead of blanking the record.
-      lastTrackKey = trackKey;
-      artworkRequestKey = null;
+      // Metadata can arrive before PICT. Keep the current cover and wait for
+      // Shairport Sync to provide the artwork for this track.
     }
   } catch (error) {
     document.querySelector('#status').textContent = '接続エラー';
