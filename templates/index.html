@@ -16,6 +16,9 @@
     --background-color: {{ config.background_color }};
     --text-color: {{ config.text_color }};
     --muted-color: {{ config.muted_color }};
+    --title-size: {{ config.title_size }};
+    --artist-size: {{ config.artist_size }};
+    --album-size: {{ config.album_size }};
   "
 >
   <main class="panel" aria-live="polite">
@@ -53,6 +56,7 @@
   <script>
     window.PLAYPANEL_CONFIG = {
       pollIntervalMs: {{ config.poll_interval_ms }},
+      animationsEnabled: {{ 'true' if config.animations_enabled else 'false' }},
     };
   </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
