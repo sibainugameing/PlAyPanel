@@ -6,6 +6,7 @@ let currentArtworkUrl = null;
 let artworkSwapTimer = null;
 let artworkRetryTimer = null;
 let recordTransitionTimer = null;
+let recordReturnTimer = null;
 let clockTimer = null;
 let blankTimer = null;
 let updateInProgress = false;
@@ -126,9 +127,84 @@ function applyPlaybackState(playing) {
   }
 }
 
+function getRecordRotationDegrees(record) {
+  const transform = getComputedStyle(record).transform;
+  if (!transform || transform === 'none') {
+    return 0;
+  }
+
+  const match = transform.match(/^matrix\(([^)]+)\)$/);
+  if (!match) {
+    return 0;
+  }
+
+  const values = match[1].split(',').map(Number);
+  if (values.length < 2 || !Number.isFinite(values[0]) || !Number.isFinite(values[1])) {
+    return 0;
+  }
+
+  let degrees = Math.atan2(values[1], values[0]) * (180 / Math.PI);
+  if (degrees < 0) {
+    degrees += 360;
+  }
+  return degrees;
+}
+
+function clearRecordReturn(record) {
+  if (recordReturnTimer !== null) {
+    window.clearTimeout(recordReturnTimer);
+    recordReturnTimer = null;
+  }
+
+  record.classList.remove('record--returning');
+  record.style.transition = '';
+  record.style.transform = '';
+}
+
 function applyRecordRotation(record, playing) {
   const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
-  record.classList.toggle('record--spinning', shouldSpin);
+
+  if (shouldSpin) {
+    clearRecordReturn(record);
+    record.classList.add('record--spinning');
+    return;
+  }
+
+  if (!animationsEnabled || !recordRotationEnabled) {
+    clearRecordReturn(record);
+    record.classList.remove('record--spinning');
+    return;
+  }
+
+  if (record.classList.contains('record--returning')) {
+    return;
+  }
+
+  const currentRotation = getRecordRotationDegrees(record);
+  record.classList.remove('record--spinning');
+
+  if (Math.abs(currentRotation) < 0.5) {
+    record.style.transform = '';
+    return;
+  }
+
+  record.style.transition = 'none';
+  record.style.transform = `rotate(${currentRotation}deg)`;
+  record.classList.add('record--returning');
+
+  void record.offsetWidth;
+
+  record.style.transition = 'transform 700ms cubic-bezier(0.22, 1, 0.36, 1)';
+  requestAnimationFrame(() => {
+    record.style.transform = 'rotate(0deg)';
+  });
+
+  recordReturnTimer = window.setTimeout(() => {
+    recordReturnTimer = null;
+    record.classList.remove('record--returning');
+    record.style.transition = '';
+    record.style.transform = '';
+  }, 750);
 }
 
 function setArtworkGlow(src) {
@@ -190,11 +266,11 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
       clonedArtwork.removeAttribute('id');
     }
 
-    oldRecord.classList.remove('record--spinning', 'record--enter', 'record--exit');
+    oldRecord.classList.remove('record--spinning', 'record--enter', 'record--exit', 'record--returning');
     oldRecord.classList.add('record--exit');
     recordStage.appendChild(oldRecord);
 
-    record.classList.remove('record--spinning', 'record--enter');
+    record.classList.remove('record--spinning', 'record--enter', 'record--returning');
     record.style.visibility = 'hidden';
 
     recordTransitionTimer = window.setTimeout(() => {
