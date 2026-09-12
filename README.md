@@ -18,32 +18,33 @@ metadata_service.py
 app.py
    ↓
 index.html + app.js + style.css
+   ↓
+ブラウザ
 ```
 
 ## ファイル構成
 
 ```text
 PlayPanel/
-├── app.py                 # WebサーバーとAPI
-├── config.py              # 設定ファイルの読み込み
-├── config.toml            # ユーザーが編集する設定
+├── app.py                 # Flask WebサーバーとAPI
 ├── metadata.py            # Shairport SyncのFIFO解析
 ├── metadata_service.py    # バックグラウンド読み取りと状態管理
 ├── models.py              # 曲情報のデータモデル
 ├── read_metadata.py       # ターミナルでの動作確認用
 ├── templates/
-│   └── index.html         # Web UI
+│   └── index.html         # Web UIのHTML
 └── static/
     ├── app.js             # ブラウザ側の更新処理
+    ├── favicon.svg        # PlayPanelのアイコン
     └── style.css          # Web UIの見た目
 ```
 
-コードは役割ごとに分けています。
+各ファイルは役割ごとに分けています。
 
 ## 必要なもの
 
 - Debian / Ubuntu 系 Linux
-- Python 3.11 以上
+- Python 3
 - Shairport Sync
 - Shairport Sync の metadata pipe
 
@@ -77,6 +78,8 @@ pip install -r requirements.txt
 
 ## メタデータ取得の確認
 
+まず Shairport Sync の metadata pipe を直接読み取ります。
+
 ```bash
 cd ~/PlayPanel
 source .venv/bin/activate
@@ -101,71 +104,34 @@ source .venv/bin/activate
 python app.py
 ```
 
-ブラウザで開きます。
+NEC自身で見る場合:
 
 ```text
 http://127.0.0.1:8765/
 ```
 
+同じLANの別端末から見る場合:
+
+```text
+http://<NECのIPアドレス>:8765/
+```
+
+例:
+
+```text
+http://192.168.11.18:8765/
+```
+
 曲情報のJSON API:
 
 ```text
-http://127.0.0.1:8765/now-playing.json
+http://<NECのIPアドレス>:8765/now-playing.json
 ```
 
 カバーアート:
 
 ```text
-http://127.0.0.1:8765/artwork
-```
-
-## 設定
-
-画面のカスタマイズは `config.toml` を編集します。
-
-```toml
-[layout]
-# アルバム画像の大きさ（px）
-artwork_size = 460
-
-# 画面全体の最大幅（px）
-panel_max_width = 1100
-
-# レコードと曲情報の間隔（px）
-panel_gap = 48
-
-[appearance]
-# 背景色
-background_color = "#111111"
-
-# 文字色
-text_color = "#ffffff"
-
-# 再生状態などのアクセント色
-accent_color = "#ffffff"
-
-[text]
-# タイトルの文字サイズ
-title_size = "clamp(2.4rem, 5vw, 5rem)"
-
-# アーティストの文字サイズ
-artist_size = "clamp(1.4rem, 2.5vw, 2.2rem)"
-
-# アルバム名の文字サイズ
-album_size = "1rem"
-
-[behavior]
-# 曲情報を確認する間隔（ミリ秒）
-poll_interval_ms = 1000
-```
-
-よく変更するのは `artwork_size`、`background_color`、`text_color`、`accent_color` です。
-
-設定を変更したら、PlayPanel を再起動してください。
-
-```text
-Ctrl+C
-python app.py
+http://<NECのIPアドレス>:8765/artwork
 ```
 
 ## 現在の機能
@@ -182,7 +148,13 @@ python app.py
 - 再生状態
 - JSON API `/now-playing.json`
 - カバーアート API `/artwork`
-- TOML 設定ファイルによる画面カスタマイズ
+- レコード風 Web UI
+- LAN内の別端末からのWebアクセス
+
+## UIについて
+
+画面のレイアウトや見た目は `templates/index.html` と `static/style.css` にまとめています。
+現在は設定ファイルを使わず、コードをシンプルにしています。
 
 ## 次の段階
 
