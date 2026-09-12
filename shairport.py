@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import base64
 import re
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO, Iterator
 
@@ -61,8 +62,6 @@ def read_item(stream: BinaryIO) -> tuple[str, str, bytes] | None:
     length = int(match.group(3))
 
     if length == 0:
-        # Empty items normally have no data section. Consume the closing tag
-        # when it is present on the same line or as a following line.
         if not line.rstrip().endswith(b"</item>"):
             stream.readline()
         return item_type, code, b""
@@ -81,7 +80,6 @@ def read_item(stream: BinaryIO) -> tuple[str, str, bytes] | None:
     except ValueError:
         return item_type, code, b""
 
-    # Base64 data is followed by </data></item> and normally a newline.
     stream.readline()
     return item_type, code, payload[:length]
 
@@ -129,9 +127,16 @@ def metadata_items(stream: BinaryIO) -> Iterator[tuple[str, str, bytes]]:
 
 
 def follow_metadata_pipe(pipe: Path = DEFAULT_PIPE) -> Iterator[TrackMetadata]:
-    """Follow the Shairport Sync metadata FIFO and yield updated state."""
+    """Follow the Shairport Sync metadata FIFO and reopen it after EOF."""
     state = TrackMetadata()
-    with pipe.open("rb", buffering=0) as stream:
-        for item in metadata_items(stream):
-            apply_item(state, item)
-            yield state
+
+    while True:
+        try:
+            with pipe.open("rb", buffering=0) as stream:
+                for item in metadata_items(stream):
+                    apply_item(state, item)
+                    yield state
+        except (FileNotFoundError, OSError):
+            pass
+
+        time.sleep(1)
