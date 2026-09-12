@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from shairport import DEFAULT_PIPE, follow_metadata_pipe
 
@@ -13,12 +14,13 @@ def main() -> None:
         help=f"Shairport Sync metadata pipe (default: {DEFAULT_PIPE})",
     )
     args = parser.parse_args()
+    pipe = Path(args.pipe)
 
-    print(f"Reading Shairport Sync metadata: {args.pipe}")
+    print(f"Reading Shairport Sync metadata: {pipe}")
     print("Waiting for metadata... (Ctrl+C to stop)")
 
     last = None
-    for state in follow_metadata_pipe(args.pipe):
+    for state in follow_metadata_pipe(pipe):
         current = (
             state.title,
             state.artist,
