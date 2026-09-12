@@ -21,6 +21,7 @@ class PlayPanelConfig:
     title_size: str = "clamp(2.8rem, 5.6vw, 6rem)"
     artist_size: str = "clamp(1.35rem, 2.25vw, 2.15rem)"
     album_size: str = "1rem"
+    animations_enabled: bool = True
     poll_interval_ms: int = 1000
 
 
@@ -37,6 +38,7 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
     layout = raw.get("layout", {})
     appearance = raw.get("appearance", {})
     typography = raw.get("typography", {})
+    animation = raw.get("animation", {})
     behavior = raw.get("behavior", {})
 
     return PlayPanelConfig(
@@ -51,5 +53,6 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         title_size=str(typography.get("title_size", defaults.title_size)),
         artist_size=str(typography.get("artist_size", defaults.artist_size)),
         album_size=str(typography.get("album_size", defaults.album_size)),
+        animations_enabled=bool(animation.get("enabled", defaults.animations_enabled)),
         poll_interval_ms=int(behavior.get("poll_interval_ms", defaults.poll_interval_ms)),
     )
