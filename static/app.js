@@ -1,6 +1,7 @@
 let lastTrackKey = null;
 let currentTrackKey = null;
 let artworkRequestKey = null;
+let artworkLoadedTrackKey = null;
 let currentArtworkUrl = null;
 let artworkSwapTimer = null;
 let artworkRetryTimer = null;
@@ -274,11 +275,13 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
   }
 }
 
-function showNewArtwork(artwork, objectUrl, playing) {
+function showNewArtwork(artwork, objectUrl, playing, trackKey) {
   const previousUrl = currentArtworkUrl;
 
   animateTrackChange(artwork, objectUrl, playing);
   currentArtworkUrl = objectUrl;
+  artworkLoadedTrackKey = trackKey;
+  lastTrackKey = trackKey;
 
   if (artworkSwapTimer !== null) {
     window.clearTimeout(artworkSwapTimer);
@@ -304,7 +307,7 @@ function scheduleArtworkRetry(trackKey, data, artwork) {
   artworkRetryTimer = window.setTimeout(() => {
     artworkRetryTimer = null;
 
-    if (currentTrackKey !== trackKey || lastTrackKey === trackKey) {
+    if (currentTrackKey !== trackKey || artworkLoadedTrackKey === trackKey) {
       return;
     }
 
@@ -351,8 +354,7 @@ async function requestArtwork(trackKey, data, artwork) {
           return;
         }
 
-        showNewArtwork(artwork, objectUrl, data.playing);
-        lastTrackKey = trackKey;
+        showNewArtwork(artwork, objectUrl, data.playing, trackKey);
         artworkRequestKey = null;
 
         if (artworkRetryTimer !== null) {
@@ -431,9 +433,12 @@ async function updateNowPlaying() {
     const trackKey = data.track_id || '';
     const artwork = document.querySelector('#artwork');
     const trackChanged = trackKey !== currentTrackKey;
+    const artworkReady = data.has_artwork === true &&
+      (!data.artwork_track_id || data.artwork_track_id === trackKey);
 
     if (trackChanged) {
       currentTrackKey = trackKey;
+      artworkLoadedTrackKey = null;
 
       if (artworkRetryTimer !== null) {
         window.clearTimeout(artworkRetryTimer);
@@ -442,14 +447,12 @@ async function updateNowPlaying() {
 
       artworkRequestKey = null;
 
-      if (trackKey && connected) {
+      if (trackKey && connected && artworkReady) {
         requestArtwork(trackKey, data, artwork);
-
-        if (lastTrackKey !== trackKey) {
-          scheduleArtworkRetry(trackKey, data, artwork);
-        }
+        scheduleArtworkRetry(trackKey, data, artwork);
       }
-    } else if (trackKey && connected && lastTrackKey !== trackKey && artworkRequestKey === null) {
+    } else if (trackKey && connected && artworkReady && artworkLoadedTrackKey !== trackKey && artworkRequestKey === null) {
+      requestArtwork(trackKey, data, artwork);
       scheduleArtworkRetry(trackKey, data, artwork);
     }
   } catch (error) {
