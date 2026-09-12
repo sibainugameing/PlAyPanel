@@ -87,3 +87,19 @@ class MetadataService:
             state = self._copy_state(self._latest)
             self._restore_cached_artwork(state)
             return state
+
+    def artwork_for_track(self, track_id: str) -> bytes | None:
+        if not track_id:
+            return None
+
+        with self._lock:
+            cached_artwork = self._artwork_cache.get(track_id)
+            if cached_artwork is not None:
+                self._artwork_cache.move_to_end(track_id)
+                return cached_artwork
+
+            if self._latest.track_id == track_id:
+                self._restore_cached_artwork(self._latest)
+                return self._latest.artwork
+
+        return None
