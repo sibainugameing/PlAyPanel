@@ -4,19 +4,16 @@ from io import BytesIO
 
 from flask import Flask, jsonify, render_template, send_file
 
-from config import load_config
 from metadata import DEFAULT_PIPE, detect_image_type
 from metadata_service import MetadataService
 
 
+HOST = "0.0.0.0"
+PORT = 8765
+
+
 app = Flask(__name__)
-config = load_config()
 metadata_service = MetadataService(DEFAULT_PIPE)
-
-
-@app.context_processor
-def template_settings():
-    return {"settings": config}
 
 
 @app.get("/")
@@ -55,8 +52,8 @@ def favicon():
 if __name__ == "__main__":
     metadata_service.start()
     app.run(
-        host=config.host,
-        port=config.port,
+        host=HOST,
+        port=PORT,
         debug=True,
         use_reloader=False,
     )
