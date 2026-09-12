@@ -14,16 +14,16 @@ body {
   place-items: center;
   overflow: hidden;
   background:
-    radial-gradient(circle at 30% 50%, #292929 0, var(--background-color) 42%, #070707 100%);
-  color: var(--text-color);
+    radial-gradient(circle at 30% 50%, #292929 0, #111111 42%, #070707 100%);
+  color: #ffffff;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .panel {
-  width: min(var(--panel-max-width), 92vw);
+  width: min(1100px, 92vw);
   display: grid;
   grid-template-columns: minmax(360px, 1fr) minmax(280px, 1fr);
-  gap: var(--panel-gap);
+  gap: 48px;
   align-items: center;
 }
 
@@ -57,12 +57,12 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: min(55vw, var(--artwork-size));
+  width: min(55vw, 520px);
   aspect-ratio: 1;
   transform: translate(-50%, -50%);
   overflow: hidden;
   border-radius: 50%;
-  background: #333;
+  background: #333333;
   box-shadow: 0 5px 18px rgba(0, 0, 0, 0.4);
 }
 
@@ -78,7 +78,7 @@ body {
   inset: calc(50% - 7px);
   border-radius: 50%;
   background: #080808;
-  box-shadow: 0 0 0 2px var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
 }
 
 .info {
@@ -89,8 +89,8 @@ body {
   margin: 0 0 22px;
   font-size: 0.95rem;
   letter-spacing: 0.08em;
-  color: var(--accent-color);
-  opacity: 0.8;
+  color: #ffffff;
+  opacity: 0.7;
 }
 
 h1,
@@ -101,20 +101,20 @@ h1,
 
 h1 {
   margin: 0;
-  font-size: var(--title-size);
+  font-size: clamp(2.4rem, 5vw, 5rem);
   line-height: 1.02;
   font-weight: 700;
 }
 
 .artist {
   margin: 20px 0 0;
-  font-size: var(--artist-size);
+  font-size: clamp(1.4rem, 2.5vw, 2.2rem);
   opacity: 0.88;
 }
 
 .album {
   margin: 10px 0 0;
-  font-size: var(--album-size);
+  font-size: 1rem;
   opacity: 0.55;
 }
 
@@ -135,6 +135,6 @@ h1 {
   }
 
   .record-label {
-    width: min(68vw, var(--artwork-size));
+    width: min(68vw, 520px);
   }
 }
