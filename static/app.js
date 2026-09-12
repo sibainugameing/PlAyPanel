@@ -1,4 +1,3 @@
-let lastTrackKey = null;
 let currentTrackKey = null;
 let artworkRequestKey = null;
 let artworkLoadedTrackKey = null;
@@ -21,10 +20,8 @@ const recordRotationSpeed = Number(animationConfig.recordRotationSpeed) > 0
   : 18;
 const recordChangeEnabled = animationConfig.recordChangeEnabled !== false;
 const infoChangeEnabled = animationConfig.infoChangeEnabled !== false;
-const pollIntervalMs = config.pollIntervalMs ?? 1000;
-const artworkRetryIntervalMs = Number(config.artworkRetryIntervalMs) > 0
-  ? Number(config.artworkRetryIntervalMs)
-  : 3000;
+const pollIntervalMs = Math.max(250, Number(config.pollIntervalMs) || 1000);
+const artworkRetryIntervalMs = Math.max(250, Number(config.artworkRetryIntervalMs) || 3000);
 const clockEnabled = displayConfig.clockEnabled === true;
 const screenBlankEnabled = displayConfig.screenBlankEnabled === true;
 const screenBlankTimeoutMinutes = Number(displayConfig.screenBlankTimeoutMinutes) > 0
@@ -41,31 +38,23 @@ document.documentElement.style.setProperty(
 
 function updateClock() {
   const clock = document.querySelector('#clock');
-  if (!clock) {
-    return;
-  }
+  if (!clock) return;
 
   const now = new Date();
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
-
   clock.textContent = `${hours}:${minutes}`;
   clock.dateTime = now.toISOString();
 }
 
 function wakeScreen() {
-  if (!screenBlankEnabled) {
-    return;
-  }
-
+  if (!screenBlankEnabled) return;
   document.body.classList.remove('screen-blanked');
   scheduleScreenBlank();
 }
 
 function scheduleScreenBlank() {
-  if (!screenBlankEnabled) {
-    return;
-  }
+  if (!screenBlankEnabled) return;
 
   if (blankTimer !== null) {
     window.clearTimeout(blankTimer);
@@ -85,27 +74,18 @@ function setupDisplayFeatures() {
 
   if (screenBlankEnabled) {
     const wakeEvents = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel'];
-
-    const handleInteraction = () => {
-      wakeScreen();
-    };
-
     wakeEvents.forEach((eventName) => {
-      window.addEventListener(eventName, handleInteraction, { passive: true });
+      window.addEventListener(eventName, wakeScreen, { passive: true });
     });
-
     scheduleScreenBlank();
   }
 }
 
 function updateTitleSize(title) {
   const titleElement = document.querySelector('#title');
-  if (!titleElement) {
-    return;
-  }
+  if (!titleElement) return;
 
   titleElement.classList.remove('title--long', 'title--very-long', 'title--extreme');
-
   const length = Array.from(title).length;
 
   if (length >= 80) {
@@ -129,14 +109,10 @@ function applyPlaybackState(playing) {
 
 function getRecordRotationDegrees(record) {
   const transform = getComputedStyle(record).transform;
-  if (!transform || transform === 'none') {
-    return 0;
-  }
+  if (!transform || transform === 'none') return 0;
 
   const match = transform.match(/^matrix\(([^)]+)\)$/);
-  if (!match) {
-    return 0;
-  }
+  if (!match) return 0;
 
   const values = match[1].split(',').map(Number);
   if (values.length < 2 || !Number.isFinite(values[0]) || !Number.isFinite(values[1])) {
@@ -144,9 +120,7 @@ function getRecordRotationDegrees(record) {
   }
 
   let degrees = Math.atan2(values[1], values[0]) * (180 / Math.PI);
-  if (degrees < 0) {
-    degrees += 360;
-  }
+  if (degrees < 0) degrees += 360;
   return degrees;
 }
 
@@ -176,9 +150,7 @@ function applyRecordRotation(record, playing) {
     return;
   }
 
-  if (record.classList.contains('record--returning')) {
-    return;
-  }
+  if (record.classList.contains('record--returning')) return;
 
   const currentRotation = getRecordRotationDegrees(record);
   record.classList.remove('record--spinning');
@@ -209,9 +181,7 @@ function applyRecordRotation(record, playing) {
 
 function setArtworkGlow(src) {
   const recordStage = document.querySelector('.record-stage');
-  if (!recordStage) {
-    return;
-  }
+  if (!recordStage) return;
 
   if (src) {
     recordStage.style.setProperty('--artwork-image', `url(\"${src}\")`);
@@ -236,16 +206,13 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
     artwork.src = newArtworkUrl;
     artwork.hidden = false;
     setArtworkGlow(newArtworkUrl);
-    if (record) {
-      finishRecordEntrance(record, playing);
-    }
+    if (record) finishRecordEntrance(record, playing);
     info?.classList.remove('info--change');
     return;
   }
 
   const changeDuration = parseFloat(
-    getComputedStyle(document.documentElement)
-      .getPropertyValue('--record-change-duration')
+    getComputedStyle(document.documentElement).getPropertyValue('--record-change-duration')
   ) || 1200;
 
   if (recordTransitionTimer !== null) {
@@ -261,12 +228,14 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
   } else {
     const oldRecord = record.cloneNode(true);
     const clonedArtwork = oldRecord.querySelector('#artwork');
+    if (clonedArtwork) clonedArtwork.removeAttribute('id');
 
-    if (clonedArtwork) {
-      clonedArtwork.removeAttribute('id');
-    }
-
-    oldRecord.classList.remove('record--spinning', 'record--enter', 'record--exit', 'record--returning');
+    oldRecord.classList.remove(
+      'record--spinning',
+      'record--enter',
+      'record--exit',
+      'record--returning'
+    );
     oldRecord.classList.add('record--exit');
     recordStage.appendChild(oldRecord);
 
@@ -275,7 +244,6 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
 
     recordTransitionTimer = window.setTimeout(() => {
       recordTransitionTimer = null;
-
       if (!record.isConnected) {
         oldRecord.remove();
         return;
@@ -290,9 +258,7 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
       record.classList.add('record--enter');
 
       const handleEntranceEnd = (event) => {
-        if (event.animationName !== 'record-enter') {
-          return;
-        }
+        if (event.animationName !== 'record-enter') return;
         record.removeEventListener('animationend', handleEntranceEnd);
         finishRecordEntrance(record, playing);
       };
@@ -308,8 +274,7 @@ function animateTrackChange(artwork, newArtworkUrl, playing) {
     info.classList.add('info--change');
 
     const infoDuration = parseFloat(
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--info-change-duration')
+      getComputedStyle(document.documentElement).getPropertyValue('--info-change-duration')
     ) || 650;
 
     window.setTimeout(() => {
@@ -324,7 +289,6 @@ function showNewArtwork(artwork, objectUrl, playing, trackKey) {
   animateTrackChange(artwork, objectUrl, playing);
   currentArtworkUrl = objectUrl;
   artworkLoadedTrackKey = trackKey;
-  lastTrackKey = trackKey;
 
   if (artworkSwapTimer !== null) {
     window.clearTimeout(artworkSwapTimer);
@@ -332,9 +296,9 @@ function showNewArtwork(artwork, objectUrl, playing, trackKey) {
 
   if (previousUrl?.startsWith('blob:')) {
     const changeDuration = parseFloat(
-      getComputedStyle(document.documentElement)
-        .getPropertyValue('--record-change-duration')
+      getComputedStyle(document.documentElement).getPropertyValue('--record-change-duration')
     ) || 1200;
+
     artworkSwapTimer = window.setTimeout(() => {
       URL.revokeObjectURL(previousUrl);
       artworkSwapTimer = null;
@@ -342,7 +306,7 @@ function showNewArtwork(artwork, objectUrl, playing, trackKey) {
   }
 }
 
-function scheduleArtworkRetry(trackKey, data, artwork) {
+function scheduleArtworkRetry(trackKey, data, artwork, delay = artworkRetryIntervalMs) {
   if (artworkRetryTimer !== null) {
     window.clearTimeout(artworkRetryTimer);
   }
@@ -350,27 +314,18 @@ function scheduleArtworkRetry(trackKey, data, artwork) {
   artworkRetryTimer = window.setTimeout(() => {
     artworkRetryTimer = null;
 
-    if (currentTrackKey !== trackKey || artworkLoadedTrackKey === trackKey) {
-      return;
-    }
-
-    if (artworkRequestKey === null) {
-      requestArtwork(trackKey, data, artwork);
-    }
-  }, artworkRetryIntervalMs);
+    if (currentTrackKey !== trackKey || artworkLoadedTrackKey === trackKey) return;
+    if (artworkRequestKey === null) requestArtwork(trackKey, data, artwork);
+  }, Math.max(100, delay));
 }
 
 async function requestArtwork(trackKey, data, artwork) {
-  if (!trackKey || currentTrackKey !== trackKey || artworkRequestKey === trackKey) {
-    return;
-  }
+  if (!trackKey || currentTrackKey !== trackKey || artworkRequestKey === trackKey) return;
 
   artworkRequestKey = trackKey;
 
   const loadArtwork = async (attempt = 1) => {
-    if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
-      return;
-    }
+    if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
 
     let objectUrl = null;
 
@@ -414,42 +369,32 @@ async function requestArtwork(trackKey, data, artwork) {
           objectUrl = null;
         }
 
-        if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
-          return;
-        }
-
-        if (attempt < 3) {
-          window.setTimeout(() => loadArtwork(attempt + 1), 150);
-          return;
-        }
+        if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
 
         artworkRequestKey = null;
-        console.error(
-          `PlayPanel: artwork failed to decode after ${attempt} attempts; will retry`
-        );
+
+        if (attempt < 3) {
+          window.setTimeout(() => requestArtwork(trackKey, data, artwork), 150);
+          return;
+        }
+
         scheduleArtworkRetry(trackKey, data, artwork);
       };
 
       image.src = objectUrl;
     } catch (error) {
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
 
-      if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
-        return;
-      }
-
-      if (attempt < 3) {
-        window.setTimeout(() => loadArtwork(attempt + 1), 150);
-        return;
-      }
+      if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
 
       artworkRequestKey = null;
-      console.error(
-        `PlayPanel: artwork request failed after ${attempt} attempts; will retry`,
-        error
-      );
+
+      if (attempt < 3) {
+        window.setTimeout(() => requestArtwork(trackKey, data, artwork), 150);
+        return;
+      }
+
+      console.warn('PlayPanel: artwork request will be retried', error);
       scheduleArtworkRetry(trackKey, data, artwork);
     }
   };
@@ -458,63 +403,62 @@ async function requestArtwork(trackKey, data, artwork) {
 }
 
 async function updateNowPlaying() {
-  if (updateInProgress) {
-    return;
-  }
-
+  if (updateInProgress) return;
   updateInProgress = true;
 
   try {
     const response = await fetch('/now-playing.json', { cache: 'no-store' });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const data = await response.json();
 
     const title = data.title || '---';
-    document.querySelector('#title').textContent = title;
-    updateTitleSize(title);
-    document.querySelector('#artist').textContent = data.artist || '---';
-    document.querySelector('#album').textContent = data.album || '---';
+    const artist = document.querySelector('#artist');
+    const album = document.querySelector('#album');
+    const titleElement = document.querySelector('#title');
+
+    if (titleElement) {
+      titleElement.textContent = title;
+      updateTitleSize(title);
+    }
+    if (artist) artist.textContent = data.artist || '---';
+    if (album) album.textContent = data.album || '---';
 
     const status = document.querySelector('#status');
     const hasTrackInfo = Boolean(data.title || data.artist || data.album || data.track_id);
-
-    if (!hasTrackInfo) {
-      status.textContent = 'Shairport未接続';
-    } else {
-      status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
+    if (status) {
+      status.textContent = hasTrackInfo
+        ? data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中'
+        : 'Shairport未接続';
     }
+
     applyPlaybackState(data.playing);
 
     const trackKey = data.track_id || '';
     const artwork = document.querySelector('#artwork');
+    if (!artwork || !trackKey) return;
+
     const trackChanged = trackKey !== currentTrackKey;
-    const artworkReady = data.has_artwork === true &&
-      (!data.artwork_track_id || data.artwork_track_id === trackKey);
 
     if (trackChanged) {
       currentTrackKey = trackKey;
       artworkLoadedTrackKey = null;
+      artworkRequestKey = null;
 
       if (artworkRetryTimer !== null) {
         window.clearTimeout(artworkRetryTimer);
         artworkRetryTimer = null;
       }
 
-      artworkRequestKey = null;
-
-      if (trackKey && artworkReady) {
-        requestArtwork(trackKey, data, artwork);
-        scheduleArtworkRetry(trackKey, data, artwork);
-      }
-    } else if (trackKey && artworkReady && artworkLoadedTrackKey !== trackKey && artworkRequestKey === null) {
+      // Do not wait for has_artwork. The browser asks the server directly.
       requestArtwork(trackKey, data, artwork);
-      scheduleArtworkRetry(trackKey, data, artwork);
+      scheduleArtworkRetry(trackKey, data, artwork, 500);
+    } else if (artworkLoadedTrackKey !== trackKey && artworkRequestKey === null) {
+      // Keep asking until this track's image is actually loaded.
+      requestArtwork(trackKey, data, artwork);
     }
   } catch (error) {
-    console.error('PlayPanel:', error);
+    console.warn('PlayPanel: now-playing update failed', error);
   } finally {
     updateInProgress = false;
   }
@@ -522,4 +466,4 @@ async function updateNowPlaying() {
 
 setupDisplayFeatures();
 updateNowPlaying();
-setInterval(updateNowPlaying, pollIntervalMs);
+window.setInterval(updateNowPlaying, pollIntervalMs);
