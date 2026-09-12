@@ -1,65 +1,104 @@
 let lastTrackKey = null;
 
-const animationsEnabled = window.PLAYPANEL_CONFIG?.animationsEnabled === true;
-const pollIntervalMs = window.PLAYPANEL_CONFIG?.pollIntervalMs ?? 1000;
+const config = window.PLAYPANEL_CONFIG ?? {};
+const animationConfig = config.animation ?? {};
+const animationsEnabled = animationConfig.enabled === true;
+const recordRotationEnabled = animationConfig.recordRotationEnabled !== false;
+const recordRotationSpeed = Number(animationConfig.recordRotationSpeed) > 0
+  ? Number(animationConfig.recordRotationSpeed)
+  : 18;
+const recordChangeEnabled = animationConfig.recordChangeEnabled !== false;
+const infoChangeEnabled = animationConfig.infoChangeEnabled !== false;
+const pollIntervalMs = config.pollIntervalMs ?? 1000;
+
+document.body.classList.toggle('animations-disabled', !animationsEnabled);
+document.documentElement.style.setProperty('--record-rotation-speed', `${recordRotationSpeed}rpm`);
 
 function clearAnimationClasses(element) {
-  element.classList.remove('record--enter', 'info--change');
+  element.classList.remove('record--enter', 'record--spinning', 'info--change');
 }
 
-function animateTrackChange(artwork, hasArtwork) {
-  if (!animationsEnabled) {
-    if (hasArtwork) {
-      artwork.hidden = false;
-    } else {
-      artwork.hidden = true;
-      artwork.removeAttribute('src');
-    }
-    return;
-  }
+function applyRecordRotation(record, playing) {
+  const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
+  record.classList.toggle('record--spinning', shouldSpin);
+}
 
+function animateTrackChange(artwork, hasArtwork, playing) {
   const record = document.querySelector('.record');
   const recordStage = document.querySelector('.record-stage');
   const info = document.querySelector('.info');
 
-  if (!record || !recordStage || !info) {
+  if (!record || !recordStage || !info || !animationsEnabled) {
     if (hasArtwork) {
       artwork.hidden = false;
     } else {
       artwork.hidden = true;
       artwork.removeAttribute('src');
     }
+    if (record) {
+      record.classList.remove('record--enter');
+      applyRecordRotation(record, playing);
+    }
+    info?.classList.remove('info--change');
     return;
   }
 
-  const oldRecord = record.cloneNode(true);
-  const clonedArtwork = oldRecord.querySelector('#artwork');
-  if (clonedArtwork) {
-    clonedArtwork.removeAttribute('id');
-  }
+  if (recordChangeEnabled) {
+    const oldRecord = record.cloneNode(true);
+    const clonedArtwork = oldRecord.querySelector('#artwork');
+    if (clonedArtwork) {
+      clonedArtwork.removeAttribute('id');
+    }
 
-  oldRecord.classList.add('record--exit');
-  recordStage.appendChild(oldRecord);
+    oldRecord.classList.remove('record--spinning', 'record--enter');
+    oldRecord.classList.add('record--exit');
+    recordStage.appendChild(oldRecord);
 
-  if (hasArtwork) {
-    artwork.hidden = false;
+    if (hasArtwork) {
+      artwork.hidden = false;
+    } else {
+      artwork.hidden = true;
+      artwork.removeAttribute('src');
+    }
+
+    record.classList.remove('record--enter');
+    void record.offsetWidth;
+    record.classList.add('record--enter');
+    applyRecordRotation(record, playing);
+
+    const changeDuration = parseFloat(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--record-change-duration')
+    ) || 760;
+
+    window.setTimeout(() => {
+      oldRecord.remove();
+      record.classList.remove('record--enter');
+    }, changeDuration + 30);
   } else {
-    artwork.hidden = true;
-    artwork.removeAttribute('src');
+    if (hasArtwork) {
+      artwork.hidden = false;
+    } else {
+      artwork.hidden = true;
+      artwork.removeAttribute('src');
+    }
+    applyRecordRotation(record, playing);
   }
 
-  clearAnimationClasses(record);
-  clearAnimationClasses(info);
+  if (infoChangeEnabled) {
+    info.classList.remove('info--change');
+    void info.offsetWidth;
+    info.classList.add('info--change');
 
-  void record.offsetWidth;
-  record.classList.add('record--enter');
-  info.classList.add('info--change');
+    const infoDuration = parseFloat(
+      getComputedStyle(document.documentElement)
+        .getPropertyValue('--info-change-duration')
+    ) || 420;
 
-  window.setTimeout(() => {
-    oldRecord.remove();
-    clearAnimationClasses(record);
-    clearAnimationClasses(info);
-  }, 760);
+    window.setTimeout(() => {
+      info.classList.remove('info--change');
+    }, infoDuration + 30);
+  }
 }
 
 async function updateNowPlaying() {
@@ -77,6 +116,11 @@ async function updateNowPlaying() {
 
     const status = document.querySelector('#status');
     status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
+
+    const record = document.querySelector('.record');
+    if (record) {
+      applyRecordRotation(record, data.playing);
+    }
 
     const trackKey = [
       data.title || '',
@@ -99,17 +143,17 @@ async function updateNowPlaying() {
 
         image.onload = () => {
           artwork.src = nextArtworkUrl;
-          animateTrackChange(artwork, true);
+          animateTrackChange(artwork, true, data.playing);
         };
 
         image.onerror = () => {
-          animateTrackChange(artwork, false);
+          animateTrackChange(artwork, false, data.playing);
           console.error('PlayPanel: artwork failed to load');
         };
 
         image.src = nextArtworkUrl;
       } else {
-        animateTrackChange(artwork, false);
+        animateTrackChange(artwork, false, data.playing);
       }
     }
   } catch (error) {
