@@ -137,30 +137,50 @@ function requestArtwork(trackKey, data, artwork) {
 
   artworkRequestKey = trackKey;
 
-  const nextArtworkUrl = `/artwork?t=${Date.now()}`;
-  const image = new Image();
-
-  image.onload = () => {
-    // Ignore an older request if another track was requested meanwhile.
+  const loadArtwork = (attempt = 1) => {
+    // A newer track has already started loading. This request is obsolete.
     if (artworkRequestKey !== trackKey) {
       return;
     }
 
-    showArtwork(artwork, nextArtworkUrl);
-    lastTrackKey = trackKey;
-    artworkRequestKey = null;
-    animateTrackChange(artwork, true, data.playing);
-  };
+    // Keep cache-busting because the artwork endpoint represents the current
+    // Shairport state, not a permanent image URL.
+    const nextArtworkUrl = `/artwork?t=${Date.now()}`;
+    const image = new Image();
 
-  image.onerror = () => {
-    // Keep lastTrackKey unchanged so the next poll retries this track.
-    if (artworkRequestKey === trackKey) {
+    image.onload = () => {
+      // Ignore an older request if another track was requested meanwhile.
+      if (artworkRequestKey !== trackKey) {
+        return;
+      }
+
+      showArtwork(artwork, nextArtworkUrl);
+      lastTrackKey = trackKey;
       artworkRequestKey = null;
-    }
-    console.error('PlayPanel: artwork failed to load; will retry');
+      animateTrackChange(artwork, true, data.playing);
+    };
+
+    image.onerror = () => {
+      if (artworkRequestKey !== trackKey) {
+        return;
+      }
+
+      if (attempt < 3) {
+        // Artwork can briefly lag behind the metadata update. Retry the same
+        // track immediately instead of waiting for the next polling cycle.
+        window.setTimeout(() => loadArtwork(attempt + 1), 150);
+        return;
+      }
+
+      // Keep lastTrackKey unchanged so the normal polling loop can retry later.
+      artworkRequestKey = null;
+      console.error(`PlayPanel: artwork failed to load after ${attempt} attempts; will retry`);
+    };
+
+    image.src = nextArtworkUrl;
   };
 
-  image.src = nextArtworkUrl;
+  loadArtwork();
 }
 
 async function updateNowPlaying() {
