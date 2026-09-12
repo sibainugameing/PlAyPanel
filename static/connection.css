@@ -1,0 +1,88 @@
+/* Connection state layout: collapse the player view when Shairport Sync disconnects. */
+
+.panel {
+  transition:
+    grid-template-columns 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    gap 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.visual {
+  transition:
+    opacity 500ms ease,
+    transform 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.info {
+  transition:
+    text-align 0s,
+    transform 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.clock {
+  transition:
+    font-size 650ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 500ms ease;
+}
+
+body.is-disconnected .panel {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+body.is-disconnected .visual {
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: scale(0.9);
+}
+
+body.is-disconnected .info {
+  text-align: center;
+}
+
+body.is-disconnected .track-copy {
+  margin-inline: auto;
+}
+
+body.is-disconnected .info-line {
+  margin-inline: auto;
+}
+
+body.is-disconnected .clock {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.56);
+}
+
+body.connection-lost .visual {
+  transform: scale(0.94);
+}
+
+body.connection-restored .visual {
+  transform: scale(1);
+}
+
+@media (max-width: 900px) {
+  body.is-disconnected .panel {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+.animations-disabled .panel,
+.animations-disabled .visual,
+.animations-disabled .info,
+.animations-disabled .clock {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .visual,
+  .info,
+  .clock {
+    transition-duration: 0.01ms !important;
+  }
+}
