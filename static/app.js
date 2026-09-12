@@ -8,6 +8,7 @@ let artworkRetryTimer = null;
 let recordTransitionTimer = null;
 let clockTimer = null;
 let blankTimer = null;
+let updateInProgress = false;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -295,6 +296,8 @@ async function requestArtwork(trackKey, data, artwork) {
       return;
     }
 
+    let objectUrl = null;
+
     try {
       const response = await fetch(
         `/artwork?track_id=${encodeURIComponent(trackKey)}&t=${Date.now()}`,
@@ -311,7 +314,7 @@ async function requestArtwork(trackKey, data, artwork) {
       }
 
       const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
+      objectUrl = URL.createObjectURL(blob);
       const image = new Image();
 
       image.onload = () => {
@@ -330,7 +333,10 @@ async function requestArtwork(trackKey, data, artwork) {
       };
 
       image.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
 
         if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
           return;
@@ -350,6 +356,10 @@ async function requestArtwork(trackKey, data, artwork) {
 
       image.src = objectUrl;
     } catch (error) {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+
       if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
         return;
       }
@@ -372,6 +382,12 @@ async function requestArtwork(trackKey, data, artwork) {
 }
 
 async function updateNowPlaying() {
+  if (updateInProgress) {
+    return;
+  }
+
+  updateInProgress = true;
+
   try {
     const response = await fetch('/now-playing.json', { cache: 'no-store' });
     if (!response.ok) {
@@ -379,7 +395,6 @@ async function updateNowPlaying() {
     }
 
     const data = await response.json();
-    const connected = data.connected === true;
 
     const title = data.title || '---';
     document.querySelector('#title').textContent = title;
@@ -423,9 +438,9 @@ async function updateNowPlaying() {
       scheduleArtworkRetry(trackKey, data, artwork);
     }
   } catch (error) {
-    document.querySelector('#status').textContent = '接続エラー';
-    applyPlaybackState(null);
     console.error('PlayPanel:', error);
+  } finally {
+    updateInProgress = false;
   }
 }
 
