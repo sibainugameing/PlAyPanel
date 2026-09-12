@@ -56,3 +56,5 @@ easing = "cubic-bezier(0.25, 0.85, 0.3, 1)"
 [behavior]
 # Browser refresh interval for metadata.
 poll_interval_ms = 1000
+# Retry interval for album artwork that is temporarily missing or unavailable.
+artwork_retry_interval_ms = 3000
