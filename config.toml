@@ -66,4 +66,4 @@ clock_enabled = true
 # Dim the entire panel after a period without user interaction.
 screen_blank_enabled = true
 # Minutes without interaction before the screen blanks.
-screen_blank_timeout_minutes = 30
+screen_blank_timeout_minutes = 10
