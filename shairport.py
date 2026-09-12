@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import re
 import time
 from dataclasses import dataclass
@@ -37,106 +38,213 @@ class TrackMetadata:
         }
 
 
-ITEM_RE = re.compile(
-    rb"<item><type>([0-9a-fA-F]{8})</type><code>([0-9a-fA-F]{8})</code>"
-    rb"<length>([0-9]+)</length>\n?"
+HEADER_PATTERN = re.compile(
+    r"^<item><type>"
+    r"([0-9A-Fa-f]{8})"
+    r"</type><code>"
+    r"([0-9A-Fa-f]{8})"
+    r"</code><length>"
+    r"([0-9]+)"
+    r"</length>"
+    r"(?:</item>)?$"
 )
 
 
-def fourcc(value: bytes) -> str:
-    return int(value, 16).to_bytes(4, "big").decode("latin-1")
+def hex_to_code(value: str) -> str:
+    try:
+        return bytes.fromhex(value).decode("ascii", errors="replace")
+    except Exception:
+        return value
 
 
-def read_item(stream: BinaryIO) -> tuple[str, str, bytes] | None:
-    """Read one Shairport Sync metadata item from its XML-like pipe format."""
-    line = stream.readline()
-    if not line:
+def parse_header(line: str) -> tuple[str, str, int] | None:
+    match = HEADER_PATTERN.match(line)
+    if match is None:
         return None
 
-    match = ITEM_RE.match(line)
-    if not match:
-        return None
+    return (
+        hex_to_code(match.group(1)),
+        hex_to_code(match.group(2)),
+        int(match.group(3)),
+    )
 
-    item_type = fourcc(match.group(1))
-    code = fourcc(match.group(2))
-    length = int(match.group(3))
 
-    if length == 0:
-        if not line.rstrip().endswith(b"</item>"):
-            stream.readline()
-        return item_type, code, b""
-
-    data_header = stream.readline()
-    if data_header != b'<data encoding="base64">\n':
-        return item_type, code, b""
-
-    encoded_length = 4 * ((length + 2) // 3)
-    encoded = stream.read(encoded_length)
-    if len(encoded) != encoded_length:
-        return None
+def decode_base64(data: bytes) -> bytes:
+    if not data:
+        return b""
 
     try:
-        payload = base64.b64decode(encoded, validate=True)
-    except ValueError:
-        return item_type, code, b""
-
-    stream.readline()
-    return item_type, code, payload[:length]
+        return base64.b64decode(data, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        print(f"Base64 decode error: {exc}", flush=True)
+        return b""
 
 
-def apply_item(state: TrackMetadata, item: tuple[str, str, bytes]) -> None:
-    item_type, code, payload = item
+def detect_image_type(data: bytes) -> str | None:
+    if len(data) >= 3 and data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    return None
 
-    if item_type == "core":
-        text = payload.decode("utf-8", errors="replace").rstrip("\x00")
-        if code == "minm":
-            state.title = text
-        elif code == "asar":
-            state.artist = text
-        elif code == "asal":
-            state.album = text
-        elif code == "asaa":
-            state.album_artist = text
-        elif code == "asgn":
-            state.genre = text
-        elif code == "ascp":
-            state.composer = text
-        elif code == "caps" and payload:
-            state.playing = payload[0] == 1
 
-    elif item_type == "ssnc":
-        text = payload.decode("utf-8", errors="replace").rstrip("\x00")
-        if code == "PICT":
+def read_metadata_item(stream: BinaryIO) -> tuple[str, str, int, bytes] | None:
+    """Read exactly one Shairport Sync metadata item."""
+    header_bytes = stream.readline()
+    if not header_bytes:
+        return None
+
+    header = header_bytes.decode("ascii", errors="replace").rstrip("\r\n")
+    if not header:
+        return None
+
+    parsed = parse_header(header)
+    if parsed is None:
+        print(f"Unknown metadata header: {header[:300]!r}", flush=True)
+        return None
+
+    type_code, metadata_code, declared_length = parsed
+
+    # Zero-length events are complete on the header line.
+    if declared_length == 0:
+        return type_code, metadata_code, 0, b""
+
+    data_tag = stream.readline()
+    if not data_tag:
+        return None
+
+    data_tag = data_tag.decode("ascii", errors="replace").rstrip("\r\n")
+    if data_tag != '<data encoding="base64">':
+        print(
+            f"Unexpected data tag for {metadata_code}: {data_tag!r}",
+            flush=True,
+        )
+        return None
+
+    expected_b64_length = 4 * ((declared_length + 2) // 3)
+    payload_b64 = bytearray()
+
+    while len(payload_b64) < expected_b64_length:
+        chunk = stream.read(expected_b64_length - len(payload_b64))
+        if not chunk:
+            print(
+                f"Unexpected EOF while reading {metadata_code} payload.",
+                flush=True,
+            )
+            return None
+        payload_b64.extend(chunk)
+
+    end_tag = stream.readline()
+    if not end_tag:
+        return None
+
+    end_tag = end_tag.decode("ascii", errors="replace").rstrip("\r\n")
+    if end_tag != "</data></item>":
+        print(
+            f"Unexpected metadata end tag for {metadata_code}: {end_tag!r}",
+            flush=True,
+        )
+        return None
+
+    payload = decode_base64(bytes(payload_b64))
+    if len(payload) != declared_length:
+        print(
+            "Decoded length mismatch: "
+            f"code={metadata_code} "
+            f"declared={declared_length} "
+            f"decoded={len(payload)}",
+            flush=True,
+        )
+        return None
+
+    return type_code, metadata_code, declared_length, payload
+
+
+def apply_item(
+    state: TrackMetadata,
+    item: tuple[str, str, int, bytes],
+) -> None:
+    _type_code, code, declared_length, payload = item
+
+    # Picture transfer markers.
+    if code == "pcst":
+        return
+
+    if code == "pcen":
+        return
+
+    if code == "stal":
+        print("WARNING: metadata transfer stalled.", flush=True)
+        return
+
+    # Cover art.
+    if code == "PICT":
+        if declared_length == 0:
+            return
+        image_type = detect_image_type(payload)
+        if image_type is not None:
             state.artwork = payload
+        else:
+            print(
+                f"Unknown cover image format ({len(payload)} bytes)",
+                flush=True,
+            )
+        return
+
+    # Playback state events.
+    if code in {"pbeg", "prsm"}:
+        state.playing = True
+        return
+
+    if code in {"pend", "aend", "pfls", "disc"}:
+        state.playing = False
+        return
+
+    # Text metadata.
+    if code in {"minm", "asar", "asal", "asaa", "asgn", "ascp", "snam"}:
+        value = payload.decode("utf-8", errors="replace").rstrip("\x00")
+
+        if code == "minm":
+            state.title = value
+        elif code == "asar":
+            state.artist = value
+        elif code == "asal":
+            state.album = value
+        elif code == "asaa":
+            state.album_artist = value
+        elif code == "asgn":
+            state.genre = value
+        elif code == "ascp":
+            state.composer = value
         elif code == "snam":
-            state.client_name = text
-        elif code == "pbeg" or code == "prsm":
-            state.playing = True
-        elif code == "pfls":
-            state.playing = False
-        elif code == "pend" or code == "disc":
-            state.playing = False
+            state.client_name = value
+        return
+
+    if code == "caps" and payload:
+        state.playing = payload[0] == 1
 
 
-def metadata_items(stream: BinaryIO) -> Iterator[tuple[str, str, bytes]]:
+def metadata_items(stream: BinaryIO) -> Iterator[tuple[str, str, int, bytes]]:
     while True:
-        item = read_item(stream)
+        item = read_metadata_item(stream)
         if item is None:
             return
         yield item
 
 
 def follow_metadata_pipe(pipe: Path = DEFAULT_PIPE) -> Iterator[TrackMetadata]:
-    """Follow the Shairport Sync metadata FIFO and reopen it after EOF."""
+    """Follow the Shairport Sync metadata FIFO and reconnect after EOF/errors."""
     state = TrackMetadata()
 
     while True:
         try:
             with pipe.open("rb", buffering=0) as stream:
+                print(f"Metadata pipe connected: {pipe}", flush=True)
                 for item in metadata_items(stream):
                     apply_item(state, item)
                     yield state
-        except (FileNotFoundError, OSError):
-            pass
+                print("Metadata pipe disconnected.", flush=True)
+        except (FileNotFoundError, PermissionError, OSError) as exc:
+            print(f"Metadata pipe error: {exc}", flush=True)
 
         time.sleep(1)
