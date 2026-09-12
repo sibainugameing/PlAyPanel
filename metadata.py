@@ -172,12 +172,28 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         state.track_id = _metadata_text(payload)
         return
 
+    # AirPlay 2 connection lifecycle messages.
+    if code == "conn":
+        state.connected = True
+        return
+
+    if code == "disc":
+        state.connected = False
+        state.playing = False
+        return
+
+    # These messages are useful for classic AirPlay sessions too.
     if code in {"pbeg", "prsm"}:
+        state.connected = True
         state.playing = True
         return
 
-    if code in {"pend", "aend", "pfls", "disc"}:
+    if code in {"pend", "aend", "pfls"}:
         state.playing = False
+        return
+
+    if code == "clip":
+        state.connected = True
         return
 
     if code in {"minm", "asar", "asal", "asaa", "asgn", "ascp", "snam"}:
@@ -220,7 +236,6 @@ def follow_metadata_pipe(pipe: Path = DEFAULT_PIPE) -> Iterator[TrackMetadata]:
     while True:
         try:
             with pipe.open("rb", buffering=0) as stream:
-                state.connected = True
                 print(f"Metadata pipe connected: {pipe}", flush=True)
                 yield state
 
@@ -228,7 +243,6 @@ def follow_metadata_pipe(pipe: Path = DEFAULT_PIPE) -> Iterator[TrackMetadata]:
                     apply_item(state, item)
                     yield state
 
-                state.connected = False
                 print("Metadata pipe disconnected.", flush=True)
                 yield state
         except (FileNotFoundError, PermissionError, OSError) as exc:
