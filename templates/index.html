@@ -3,12 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#080808">
+  <meta name="theme-color" content="{{ config.background_color }}">
   <title>PlayPanel</title>
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body
+  style="
+    --artwork-size: {{ config.artwork_size }}px;
+    --panel-max-width: {{ config.panel_max_width }}px;
+    --panel-gap: {{ config.panel_gap }}px;
+    --background-color: {{ config.background_color }};
+    --text-color: {{ config.text_color }};
+    --muted-color: {{ config.muted_color }};
+  "
+>
   <main class="panel" aria-live="polite">
     <section class="visual" aria-label="アルバムアート">
       <div class="record-stage">
@@ -41,6 +50,11 @@
     </section>
   </main>
 
+  <script>
+    window.PLAYPANEL_CONFIG = {
+      pollIntervalMs: {{ config.poll_interval_ms }},
+    };
+  </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
