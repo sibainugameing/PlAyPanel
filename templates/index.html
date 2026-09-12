@@ -6,7 +6,17 @@
   <title>PlayPanel</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body
+  style="--artwork-size: {{ settings.artwork_size }}px;
+         --panel-max-width: {{ settings.panel_max_width }}px;
+         --panel-gap: {{ settings.panel_gap }}px;
+         --background-color: {{ settings.background_color }};
+         --text-color: {{ settings.text_color }};
+         --accent-color: {{ settings.accent_color }};
+         --title-size: {{ settings.title_size }};
+         --artist-size: {{ settings.artist_size }};
+         --album-size: {{ settings.album_size }};"
+>
   <main class="panel">
     <section class="visual" aria-label="ジャケット">
       <div class="record">
