@@ -390,7 +390,7 @@ async function updateNowPlaying() {
     } else {
       status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
     }
-    applyPlaybackState(data.playing);
+    applyPlaybackState(data.connected === true ? data.playing : null);
 
     const trackKey = data.track_id || '';
     const artwork = document.querySelector('#artwork');
