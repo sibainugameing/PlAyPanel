@@ -141,21 +141,6 @@ body::before {
   display: none;
 }
 
-.record-hole {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 5;
-  width: 6px;
-  height: 6px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: #050505;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 1px 3px rgba(0, 0, 0, 0.7);
-}
-
 .info {
   min-width: 0;
   position: relative;
