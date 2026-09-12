@@ -30,3 +30,11 @@ album_size = "1rem"
 [behavior]
 # How often the browser checks for updated song information.
 poll_interval_ms = 1000
+
+[server]
+# Listen on all network interfaces so other devices on the LAN can open PlayPanel.
+# Use "127.0.0.1" for this PC only.
+host = "0.0.0.0"
+
+# Web server port.
+port = 8765
