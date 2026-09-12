@@ -53,6 +53,35 @@ body.is-playing::after {
   transform: scale(1);
 }
 
+.clock {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  z-index: 20;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.screen-blank {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 700ms ease;
+}
+
+body.screen-blanked .screen-blank {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .panel {
   width: min(var(--panel-max-width, 1180px), 92vw);
   display: grid;
