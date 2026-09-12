@@ -281,7 +281,7 @@ function scheduleArtworkRetry(trackKey, data, artwork) {
 }
 
 async function requestArtwork(trackKey, data, artwork) {
-  if (currentTrackKey !== trackKey || artworkRequestKey === trackKey) {
+  if (!trackKey || currentTrackKey !== trackKey || artworkRequestKey === trackKey) {
     return;
   }
 
@@ -293,9 +293,10 @@ async function requestArtwork(trackKey, data, artwork) {
     }
 
     try {
-      const response = await fetch(`/artwork?t=${Date.now()}`, {
-        cache: 'no-store',
-      });
+      const response = await fetch(
+        `/artwork?track_id=${encodeURIComponent(trackKey)}&t=${Date.now()}`,
+        { cache: 'no-store' }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -384,15 +385,14 @@ async function updateNowPlaying() {
     document.querySelector('#album').textContent = data.album || '---';
 
     const status = document.querySelector('#status');
-    status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
+    if (data.connected !== true) {
+      status.textContent = 'Shairport未接続';
+    } else {
+      status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
+    }
     applyPlaybackState(data.playing);
 
-    const trackKey = [
-      data.title || '',
-      data.artist || '',
-      data.album || '',
-    ].join('\u0001');
-
+    const trackKey = data.track_id || '';
     const artwork = document.querySelector('#artwork');
     const trackChanged = trackKey !== currentTrackKey;
 
@@ -406,12 +406,14 @@ async function updateNowPlaying() {
 
       artworkRequestKey = null;
 
-      requestArtwork(trackKey, data, artwork);
+      if (trackKey) {
+        requestArtwork(trackKey, data, artwork);
 
-      if (lastTrackKey !== trackKey) {
-        scheduleArtworkRetry(trackKey, data, artwork);
+        if (lastTrackKey !== trackKey) {
+          scheduleArtworkRetry(trackKey, data, artwork);
+        }
       }
-    } else if (lastTrackKey !== trackKey && artworkRequestKey === null) {
+    } else if (trackKey && lastTrackKey !== trackKey && artworkRequestKey === null) {
       scheduleArtworkRetry(trackKey, data, artwork);
     }
   } catch (error) {
