@@ -134,6 +134,8 @@ function clearRecordReturn(record) {
 }
 
 function applyRecordRotation(record, playing) {
+  if (!record) return;
+
   const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
 
   if (shouldSpin) {
@@ -190,6 +192,42 @@ function setArtworkGlow(src) {
   }
 }
 
+function animateTrackChange(playing) {
+  const record = document.querySelector('.record');
+  const info = document.querySelector('.info');
+
+  if (animationsEnabled && record && recordChangeEnabled) {
+    record.classList.remove('record--enter');
+    void record.offsetWidth;
+    record.classList.add('record--enter');
+
+    const handleEntranceEnd = (event) => {
+      if (event.animationName !== 'record-enter') return;
+      record.removeEventListener('animationend', handleEntranceEnd);
+      record.classList.remove('record--enter');
+      applyRecordRotation(record, playing);
+    };
+
+    record.addEventListener('animationend', handleEntranceEnd);
+  } else if (record) {
+    applyRecordRotation(record, playing);
+  }
+
+  if (animationsEnabled && info && infoChangeEnabled) {
+    info.classList.remove('info--change');
+    void info.offsetWidth;
+    info.classList.add('info--change');
+
+    const infoDuration = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--info-change-duration')
+    ) || 420;
+
+    window.setTimeout(() => {
+      info.classList.remove('info--change');
+    }, infoDuration + 30);
+  }
+}
+
 function swapArtwork(artwork, objectUrl, playing) {
   // The image has already loaded successfully. Only now touch the live <img>.
   artwork.onload = null;
@@ -197,7 +235,7 @@ function swapArtwork(artwork, objectUrl, playing) {
   artwork.src = objectUrl;
   artwork.hidden = false;
   setArtworkGlow(objectUrl);
-  applyRecordRotation(document.querySelector('.record'), playing);
+  animateTrackChange(playing);
 }
 
 function scheduleArtworkRetry(trackKey, data, artwork, delay = artworkRetryIntervalMs) {
