@@ -169,7 +169,16 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         return
 
     if code == "mper":
-        state.track_id = _metadata_text(payload)
+        new_track_id = _metadata_text(payload)
+        if new_track_id and new_track_id != state.track_id:
+            old_artwork_track_id = state.artwork_track_id
+            state.track_id = new_track_id
+
+            if state.artwork is not None and old_artwork_track_id == "":
+                state.artwork_track_id = new_track_id
+            elif state.artwork is not None and old_artwork_track_id != new_track_id:
+                state.artwork = None
+                state.artwork_track_id = ""
         return
 
     # AirPlay 2 connection lifecycle messages.
@@ -216,6 +225,8 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
 
         if not state.track_id or state.track_id.startswith("fallback:"):
             state.track_id = _fallback_track_id(state)
+        if state.artwork is not None and not state.artwork_track_id and state.track_id:
+            state.artwork_track_id = state.track_id
         return
 
     if code == "caps" and payload:
@@ -243,6 +254,7 @@ def follow_metadata_pipe(pipe: Path = DEFAULT_PIPE) -> Iterator[TrackMetadata]:
                     apply_item(state, item)
                     yield state
 
+                state.connected = False
                 print("Metadata pipe disconnected.", flush=True)
                 yield state
         except (FileNotFoundError, PermissionError, OSError) as exc:
