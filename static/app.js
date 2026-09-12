@@ -228,13 +228,14 @@ function animateTrackChange(playing) {
   }
 }
 
-function swapArtwork(artwork, objectUrl, playing) {
-  // The image has already loaded successfully. Only now touch the live <img>.
+function swapArtwork(artwork, artworkUrl, playing) {
+  // The preloader has completed successfully. Use the normal HTTP URL directly.
   artwork.onload = null;
   artwork.onerror = null;
-  artwork.src = objectUrl;
+  artwork.src = artworkUrl;
   artwork.hidden = false;
-  setArtworkGlow(objectUrl);
+  currentArtworkUrl = artworkUrl;
+  setArtworkGlow(artworkUrl);
   animateTrackChange(playing);
 }
 
@@ -251,94 +252,36 @@ function scheduleArtworkRetry(trackKey, data, artwork, delay = artworkRetryInter
   }, Math.max(100, delay));
 }
 
-async function requestArtwork(trackKey, data, artwork) {
+function requestArtwork(trackKey, data, artwork) {
   if (!trackKey || currentTrackKey !== trackKey || artworkRequestKey === trackKey) return;
 
   artworkRequestKey = trackKey;
 
-  const loadArtwork = async (attempt = 1) => {
+  const artworkUrl = `/artwork?track_id=${encodeURIComponent(trackKey)}&t=${Date.now()}`;
+  const image = new Image();
+
+  image.onload = () => {
     if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
 
-    let objectUrl = null;
+    artworkLoadedTrackKey = trackKey;
+    artworkRequestKey = null;
 
-    try {
-      const response = await fetch(
-        `/artwork?track_id=${encodeURIComponent(trackKey)}&t=${Date.now()}`,
-        { cache: 'no-store' }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.startsWith('image/')) {
-        throw new Error(`Unexpected content type: ${contentType || 'unknown'}`);
-      }
-
-      const blob = await response.blob();
-      objectUrl = URL.createObjectURL(blob);
-      const image = new Image();
-
-      image.onload = () => {
-        if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) {
-          URL.revokeObjectURL(objectUrl);
-          return;
-        }
-
-        const previousUrl = currentArtworkUrl;
-        artworkLoadedTrackKey = trackKey;
-        artworkRequestKey = null;
-        currentArtworkUrl = objectUrl;
-
-        swapArtwork(artwork, objectUrl, data.playing);
-
-        if (artworkRetryTimer !== null) {
-          window.clearTimeout(artworkRetryTimer);
-          artworkRetryTimer = null;
-        }
-
-        if (previousUrl?.startsWith('blob:') && previousUrl !== objectUrl) {
-          window.setTimeout(() => URL.revokeObjectURL(previousUrl), 2000);
-        }
-      };
-
-      image.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        objectUrl = null;
-
-        if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
-
-        artworkRequestKey = null;
-
-        if (attempt < 3) {
-          window.setTimeout(() => requestArtwork(trackKey, data, artwork), 150);
-          return;
-        }
-
-        console.warn('PlayPanel: artwork request will be retried');
-        scheduleArtworkRetry(trackKey, data, artwork);
-      };
-
-      image.src = objectUrl;
-    } catch (error) {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-
-      if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
-
-      artworkRequestKey = null;
-
-      if (attempt < 3) {
-        window.setTimeout(() => requestArtwork(trackKey, data, artwork), 150);
-        return;
-      }
-
-      console.warn('PlayPanel: artwork request will be retried', error);
-      scheduleArtworkRetry(trackKey, data, artwork);
+    if (artworkRetryTimer !== null) {
+      window.clearTimeout(artworkRetryTimer);
+      artworkRetryTimer = null;
     }
+
+    swapArtwork(artwork, artworkUrl, data.playing);
   };
 
-  loadArtwork();
+  image.onerror = () => {
+    if (currentTrackKey !== trackKey || artworkRequestKey !== trackKey) return;
+
+    artworkRequestKey = null;
+    scheduleArtworkRetry(trackKey, data, artwork, 500);
+  };
+
+  image.src = artworkUrl;
 }
 
 async function updateNowPlaying() {
@@ -389,7 +332,7 @@ async function updateNowPlaying() {
         artworkRetryTimer = null;
       }
 
-      // Keep the currently visible artwork until the new image has loaded.
+      // Keep the current artwork visible until the new HTTP image is loaded.
       requestArtwork(trackKey, data, artwork);
     } else if (artworkLoadedTrackKey !== trackKey && artworkRequestKey === null) {
       requestArtwork(trackKey, data, artwork);
