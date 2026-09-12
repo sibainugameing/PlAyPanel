@@ -138,8 +138,7 @@ def _metadata_text(payload: bytes) -> str:
 
 
 def _fallback_track_id(state: TrackMetadata) -> str:
-    parts = [state.title, state.artist, state.album]
-    value = "\x1f".join(parts).strip("\x1f")
+    value = "\x1f".join([state.title, state.artist, state.album]).strip("\x1f")
     return f"fallback:{value}" if value else ""
 
 
@@ -182,6 +181,10 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         value = _metadata_text(payload)
 
         if code == "minm":
+            # A new title starts a new track description. Reset the identity
+            # first; mper can replace the fallback identity later in the same
+            # metadata sequence when the sender supplies it.
+            state.track_id = ""
             state.title = value
         elif code == "asar":
             state.artist = value
