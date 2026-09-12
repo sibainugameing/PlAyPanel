@@ -7,6 +7,7 @@ let artworkRetryTimer = null;
 let recordTransitionTimer = null;
 let clockTimer = null;
 let blankTimer = null;
+let previousConnected = null;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -147,6 +148,50 @@ function setArtworkGlow(src) {
 function finishRecordEntrance(record, playing) {
   record.classList.remove('record--enter');
   applyRecordRotation(record, playing);
+}
+
+function setConnectionState(connected, animate = true) {
+  const wasConnected = previousConnected;
+  previousConnected = connected;
+
+  const changed = wasConnected !== null && wasConnected !== connected;
+  const shouldAnimate = animate && animationsEnabled && changed;
+
+  document.body.classList.toggle('is-disconnected', !connected);
+  document.body.classList.toggle('is-connected-transition', shouldAnimate);
+
+  const info = document.querySelector('.info');
+  const record = document.querySelector('.record');
+
+  if (!connected) {
+    document.body.classList.remove('is-playing');
+    if (record) {
+      record.classList.remove('record--spinning', 'record--enter');
+    }
+    if (shouldAnimate) {
+      document.body.classList.add('connection-lost');
+      window.setTimeout(() => {
+        document.body.classList.remove('connection-lost', 'is-connected-transition');
+      }, 750);
+    }
+    return;
+  }
+
+  if (shouldAnimate) {
+    document.body.classList.add('connection-restored');
+    window.setTimeout(() => {
+      document.body.classList.remove('connection-restored', 'is-connected-transition');
+    }, 750);
+  }
+
+  if (info && shouldAnimate) {
+    info.classList.remove('info--change');
+    void info.offsetWidth;
+    info.classList.add('info--change');
+    window.setTimeout(() => {
+      info.classList.remove('info--change');
+    }, 680);
+  }
 }
 
 function animateTrackChange(artwork, newArtworkUrl, playing) {
@@ -377,6 +422,8 @@ async function updateNowPlaying() {
     }
 
     const data = await response.json();
+    const connected = data.connected === true;
+    setConnectionState(connected);
 
     const title = data.title || '---';
     document.querySelector('#title').textContent = title;
@@ -385,12 +432,12 @@ async function updateNowPlaying() {
     document.querySelector('#album').textContent = data.album || '---';
 
     const status = document.querySelector('#status');
-    if (data.connected !== true) {
+    if (!connected) {
       status.textContent = 'Shairport未接続';
     } else {
       status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
     }
-    applyPlaybackState(data.connected === true ? data.playing : null);
+    applyPlaybackState(connected ? data.playing : null);
 
     const trackKey = data.track_id || '';
     const artwork = document.querySelector('#artwork');
@@ -406,18 +453,20 @@ async function updateNowPlaying() {
 
       artworkRequestKey = null;
 
-      if (trackKey) {
+      if (trackKey && connected) {
         requestArtwork(trackKey, data, artwork);
 
         if (lastTrackKey !== trackKey) {
           scheduleArtworkRetry(trackKey, data, artwork);
         }
       }
-    } else if (trackKey && lastTrackKey !== trackKey && artworkRequestKey === null) {
+    } else if (trackKey && connected && lastTrackKey !== trackKey && artworkRequestKey === null) {
       scheduleArtworkRetry(trackKey, data, artwork);
     }
   } catch (error) {
     document.querySelector('#status').textContent = '接続エラー';
+    setConnectionState(false);
+    applyPlaybackState(null);
     console.error('PlayPanel:', error);
   }
 }
