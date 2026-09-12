@@ -20,6 +20,8 @@ class PlayPanelConfig:
     artist_size: str = "clamp(1.4rem, 2.5vw, 2.2rem)"
     album_size: str = "1rem"
     poll_interval_ms: int = 1000
+    host: str = "0.0.0.0"
+    port: int = 8765
 
 
 def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
@@ -35,6 +37,7 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
     layout = raw.get("layout", {})
     text = raw.get("text", {})
     behavior = raw.get("behavior", {})
+    server = raw.get("server", {})
 
     return PlayPanelConfig(
         artwork_size=int(layout.get("artwork_size", values.artwork_size)),
@@ -47,4 +50,6 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         artist_size=str(text.get("artist_size", values.artist_size)),
         album_size=str(text.get("album_size", values.album_size)),
         poll_interval_ms=int(behavior.get("poll_interval_ms", values.poll_interval_ms)),
+        host=str(server.get("host", values.host)),
+        port=int(server.get("port", values.port)),
     )
