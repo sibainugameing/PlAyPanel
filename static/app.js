@@ -39,19 +39,46 @@ function updateTitleSize(title) {
   }
 }
 
+function applyPlaybackState(playing) {
+  const isPlaying = playing === true;
+  document.body.classList.toggle('is-playing', isPlaying);
+
+  const record = document.querySelector('.record');
+  if (record) {
+    applyRecordRotation(record, playing);
+  }
+}
+
 function applyRecordRotation(record, playing) {
   const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
   record.classList.toggle('record--spinning', shouldSpin);
 }
 
+function setArtworkGlow(src) {
+  const recordStage = document.querySelector('.record-stage');
+  if (!recordStage) {
+    return;
+  }
+
+  if (src) {
+    recordStage.style.setProperty('--artwork-image', `url("${src}")`);
+    recordStage.classList.add('has-artwork-glow');
+  } else {
+    recordStage.style.removeProperty('--artwork-image');
+    recordStage.classList.remove('has-artwork-glow');
+  }
+}
+
 function showArtwork(artwork, src) {
   artwork.src = src;
   artwork.hidden = false;
+  setArtworkGlow(src);
 }
 
 function hideArtwork(artwork) {
   artwork.hidden = true;
   artwork.removeAttribute('src');
+  setArtworkGlow(null);
 }
 
 function animateTrackChange(artwork, hasArtwork, playing) {
@@ -200,11 +227,7 @@ async function updateNowPlaying() {
 
     const status = document.querySelector('#status');
     status.textContent = data.playing === true ? '再生中' : data.playing === false ? '停止' : '待機中';
-
-    const record = document.querySelector('.record');
-    if (record) {
-      applyRecordRotation(record, data.playing);
-    }
+    applyPlaybackState(data.playing);
 
     const trackKey = [
       data.title || '',
