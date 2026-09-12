@@ -1,4 +1,5 @@
 let lastTrackKey = null;
+let artworkRequestKey = null;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -43,6 +44,16 @@ function applyRecordRotation(record, playing) {
   record.classList.toggle('record--spinning', shouldSpin);
 }
 
+function showArtwork(artwork, src) {
+  artwork.src = src;
+  artwork.hidden = false;
+}
+
+function hideArtwork(artwork) {
+  artwork.hidden = true;
+  artwork.removeAttribute('src');
+}
+
 function animateTrackChange(artwork, hasArtwork, playing) {
   const record = document.querySelector('.record');
   const recordStage = document.querySelector('.record-stage');
@@ -52,8 +63,7 @@ function animateTrackChange(artwork, hasArtwork, playing) {
     if (hasArtwork) {
       artwork.hidden = false;
     } else {
-      artwork.hidden = true;
-      artwork.removeAttribute('src');
+      hideArtwork(artwork);
     }
     if (record) {
       record.classList.remove('record--enter');
@@ -77,8 +87,7 @@ function animateTrackChange(artwork, hasArtwork, playing) {
     if (hasArtwork) {
       artwork.hidden = false;
     } else {
-      artwork.hidden = true;
-      artwork.removeAttribute('src');
+      hideArtwork(artwork);
     }
 
     record.classList.remove('record--enter');
@@ -100,8 +109,7 @@ function animateTrackChange(artwork, hasArtwork, playing) {
     if (hasArtwork) {
       artwork.hidden = false;
     } else {
-      artwork.hidden = true;
-      artwork.removeAttribute('src');
+      hideArtwork(artwork);
     }
     applyRecordRotation(record, playing);
   }
@@ -120,6 +128,39 @@ function animateTrackChange(artwork, hasArtwork, playing) {
       info.classList.remove('info--change');
     }, infoDuration + 30);
   }
+}
+
+function requestArtwork(trackKey, data, artwork) {
+  if (artworkRequestKey === trackKey) {
+    return;
+  }
+
+  artworkRequestKey = trackKey;
+
+  const nextArtworkUrl = `/artwork?t=${Date.now()}`;
+  const image = new Image();
+
+  image.onload = () => {
+    // Ignore an older request if another track was requested meanwhile.
+    if (artworkRequestKey !== trackKey) {
+      return;
+    }
+
+    showArtwork(artwork, nextArtworkUrl);
+    lastTrackKey = trackKey;
+    artworkRequestKey = null;
+    animateTrackChange(artwork, true, data.playing);
+  };
+
+  image.onerror = () => {
+    // Keep lastTrackKey unchanged so the next poll retries this track.
+    if (artworkRequestKey === trackKey) {
+      artworkRequestKey = null;
+    }
+    console.error('PlayPanel: artwork failed to load; will retry');
+  };
+
+  image.src = nextArtworkUrl;
 }
 
 async function updateNowPlaying() {
@@ -153,31 +194,15 @@ async function updateNowPlaying() {
 
     const artwork = document.querySelector('#artwork');
     const trackChanged = trackKey !== lastTrackKey;
-    const needsArtworkUpdate =
-      trackChanged ||
-      (data.has_artwork && artwork.hidden);
 
-    if (needsArtworkUpdate) {
+    if (trackChanged && data.has_artwork) {
+      requestArtwork(trackKey, data, artwork);
+    } else if (trackChanged && !data.has_artwork) {
+      // No artwork is a confirmed state, so this track can be committed immediately.
       lastTrackKey = trackKey;
-
-      if (data.has_artwork) {
-        const nextArtworkUrl = `/artwork?t=${Date.now()}`;
-        const image = new Image();
-
-        image.onload = () => {
-          artwork.src = nextArtworkUrl;
-          animateTrackChange(artwork, true, data.playing);
-        };
-
-        image.onerror = () => {
-          animateTrackChange(artwork, false, data.playing);
-          console.error('PlayPanel: artwork failed to load');
-        };
-
-        image.src = nextArtworkUrl;
-      } else {
-        animateTrackChange(artwork, false, data.playing);
-      }
+      artworkRequestKey = null;
+      hideArtwork(artwork);
+      animateTrackChange(artwork, false, data.playing);
     }
   } catch (error) {
     document.querySelector('#status').textContent = '接続エラー';
