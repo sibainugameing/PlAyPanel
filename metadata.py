@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import os
 import re
 import time
 from pathlib import Path
@@ -10,7 +11,9 @@ from typing import BinaryIO, Iterator
 from models import TrackMetadata
 
 
-DEFAULT_PIPE = Path("/tmp/shairport-sync-metadata")
+DEFAULT_PIPE = Path(
+    os.environ.get("PLAYPANEL_METADATA_PIPE", "/tmp/shairport-sync-metadata")
+)
 
 
 HEADER_PATTERN = re.compile(
@@ -181,9 +184,6 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         value = _metadata_text(payload)
 
         if code == "minm":
-            # A new title starts a new track description. Reset the identity
-            # first; mper can replace the fallback identity later in the same
-            # metadata sequence when the sender supplies it.
             state.track_id = ""
             state.title = value
         elif code == "asar":
