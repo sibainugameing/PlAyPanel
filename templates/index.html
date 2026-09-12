@@ -19,6 +19,12 @@
     --title-size: {{ config.title_size }};
     --artist-size: {{ config.artist_size }};
     --album-size: {{ config.album_size }};
+    --record-change-duration: {{ config.record_change_duration }}ms;
+    --record-change-distance: {{ config.record_change_distance }}%;
+    --record-change-rotation: {{ config.record_change_rotation }}deg;
+    --info-change-duration: {{ config.info_change_duration }}ms;
+    --info-change-distance: {{ config.info_change_distance }}px;
+    --animation-easing: {{ config.animation_easing }};
   "
 >
   <main class="panel" aria-live="polite">
@@ -56,7 +62,13 @@
   <script>
     window.PLAYPANEL_CONFIG = {
       pollIntervalMs: {{ config.poll_interval_ms }},
-      animationsEnabled: {{ 'true' if config.animations_enabled else 'false' }},
+      animation: {
+        enabled: {{ 'true' if config.animations_enabled else 'false' }},
+        recordRotationEnabled: {{ 'true' if config.record_rotation_enabled else 'false' }},
+        recordRotationSpeed: {{ config.record_rotation_speed }},
+        recordChangeEnabled: {{ 'true' if config.record_change_enabled else 'false' }},
+        infoChangeEnabled: {{ 'true' if config.info_change_enabled else 'false' }},
+      },
     };
   </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
