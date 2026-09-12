@@ -128,7 +128,8 @@ body.is-playing .record-shadow {
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     inset 0 0 50px rgba(0, 0, 0, 0.58),
     0 30px 80px rgba(0, 0, 0, 0.55);
-  will-change: transform;
+  will-change: transform, opacity, filter;
+  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
   transform-origin: center;
 }
 
@@ -307,15 +308,12 @@ h1.title--extreme {
 }
 
 .record--enter {
-  animation:
-    record-enter var(--record-change-duration, 760ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both,
-    record-spin var(--record-rotation-duration, 3.333s) linear infinite;
+  animation: record-enter var(--record-change-duration, 760ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
 .record--exit {
   z-index: 4;
-  animation:
-    record-exit var(--record-change-duration, 760ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  animation: record-exit var(--record-change-duration, 760ms) var(--animation-easing, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
 .info--change {
@@ -345,37 +343,29 @@ h1.title--extreme {
 
 @keyframes record-spin {
   from {
-    transform: rotate(0deg);
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
   }
   to {
-    transform: rotate(360deg);
+    transform: translate3d(0, 0, 0) rotate(360deg) scale(1);
   }
 }
 
 @keyframes record-enter {
   0% {
-    translate: var(--record-change-distance, 120%) 0;
-    rotate: var(--record-change-rotation, 22deg);
-    scale: 0.88;
+    transform: translate3d(var(--record-change-distance, 120%), 0, 0) rotate(var(--record-change-rotation, 22deg)) scale(0.88);
     opacity: 0;
     filter: blur(5px);
   }
   55% {
-    translate: -3% 0;
-    rotate: -3deg;
-    scale: 1.025;
+    transform: translate3d(-3%, 0, 0) rotate(-3deg) scale(1.025);
     opacity: 1;
     filter: blur(0);
   }
   78% {
-    translate: 1.2% 0;
-    rotate: 1deg;
-    scale: 0.995;
+    transform: translate3d(1.2%, 0, 0) rotate(1deg) scale(0.995);
   }
   100% {
-    translate: 0 0;
-    rotate: 0deg;
-    scale: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
     opacity: 1;
     filter: blur(0);
   }
@@ -383,22 +373,16 @@ h1.title--extreme {
 
 @keyframes record-exit {
   0% {
-    translate: 0 0;
-    rotate: 0deg;
-    scale: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
     opacity: 1;
     filter: blur(0);
   }
   45% {
-    translate: -8% 0;
-    rotate: -4deg;
-    scale: 0.99;
+    transform: translate3d(-8%, 0, 0) rotate(-4deg) scale(0.99);
     opacity: 0.92;
   }
   100% {
-    translate: calc(-1 * var(--record-change-distance, 120%)) 0;
-    rotate: calc(-1 * var(--record-change-rotation, 22deg));
-    scale: 0.9;
+    transform: translate3d(calc(-1 * var(--record-change-distance, 120%)), 0, 0) rotate(calc(-1 * var(--record-change-rotation, 22deg))) scale(0.9);
     opacity: 0;
     filter: blur(5px);
   }
@@ -407,34 +391,34 @@ h1.title--extreme {
 @keyframes info-change {
   0% {
     opacity: 0.35;
-    translate: 28px var(--info-change-distance, 16px);
+    transform: translate3d(28px, var(--info-change-distance, 16px), 0);
   }
   100% {
     opacity: 1;
-    translate: 0 0;
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes info-label-change {
   from {
     opacity: 0;
-    translate: 0 10px;
+    transform: translate3d(0, 10px, 0);
   }
   to {
     opacity: 1;
-    translate: 0 0;
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes info-title-change {
   from {
     opacity: 0;
-    translate: 22px 0;
+    transform: translate3d(22px, 0, 0);
     filter: blur(4px);
   }
   to {
     opacity: 1;
-    translate: 0 0;
+    transform: translate3d(0, 0, 0);
     filter: blur(0);
   }
 }
@@ -442,21 +426,21 @@ h1.title--extreme {
 @keyframes info-detail-change {
   from {
     opacity: 0;
-    translate: 14px 0;
+    transform: translate3d(14px, 0, 0);
   }
   to {
     opacity: 1;
-    translate: 0 0;
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes info-line-change {
   from {
-    scale: 0.35 1;
+    transform: scaleX(0.35);
     opacity: 0;
   }
   to {
-    scale: 1 1;
+    transform: scaleX(1);
     opacity: 1;
   }
 }
@@ -474,62 +458,106 @@ h1.title--extreme {
 }
 
 .animations-disabled .record,
-.animations-disabled .record--enter,
-.animations-disabled .record--exit,
-.animations-disabled .info--change,
-.animations-disabled .status-dot {
+.animations-disabled .status-dot,
+.animations-disabled .record-stage::before,
+.animations-disabled .record-shadow,
+.animations-disabled .info,
+.animations-disabled .info-line,
+.animations-disabled .now-playing,
+.animations-disabled h1,
+.animations-disabled .artist,
+.animations-disabled .album {
   animation: none !important;
-  translate: none !important;
-  rotate: none !important;
-  scale: none !important;
-  filter: none !important;
+  transition: none !important;
 }
 
-.animations-disabled body::after,
-.animations-disabled .record-stage::before {
+.animations-disabled::after {
+  opacity: 0 !important;
   transition: none !important;
+}
+
+.animations-disabled .record-stage::before {
+  opacity: 0 !important;
+  transform: scale(0.72) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media (max-width: 900px) {
   body {
     overflow: auto;
+    min-height: 100dvh;
+    padding: 28px 0;
   }
 
   .panel {
-    width: min(680px, 90vw);
     grid-template-columns: 1fr;
-    gap: 24px;
-    padding: 48px 0 64px;
+    gap: 34px;
+    width: min(680px, 88vw);
   }
 
   .record-stage {
-    width: min(82vw, 560px);
+    width: min(76vw, 560px);
   }
 
   .info {
-    padding: 0 4px;
+    text-align: center;
+    padding-bottom: 12px;
+  }
+
+  .eyebrow {
+    margin-bottom: 22px;
+  }
+
+  .track-copy {
+    margin-inline: auto;
+  }
+
+  .info-line {
+    margin-inline: auto;
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 600px) {
+  .panel {
+    width: min(92vw, 520px);
+  }
+
+  .record-stage {
+    width: 84vw;
+  }
+
+  h1 {
+    font-size: clamp(2.15rem, 11vw, 3.6rem);
+  }
+
   h1.title--long {
-    font-size: clamp(2rem, 7vw, 3.5rem);
+    font-size: clamp(2rem, 9.6vw, 3.2rem);
   }
 
   h1.title--very-long {
-    font-size: clamp(1.7rem, 6vw, 2.8rem);
+    font-size: clamp(1.75rem, 8.4vw, 2.8rem);
   }
 
   h1.title--extreme {
-    font-size: clamp(1.5rem, 5vw, 2.3rem);
+    font-size: clamp(1.5rem, 7.2vw, 2.4rem);
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
-  * {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+  .artist {
+    margin-top: 18px;
+    font-size: clamp(1.18rem, 5.5vw, 1.65rem);
+  }
+
+  .info-line {
+    margin-top: 28px;
   }
 }
