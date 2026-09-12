@@ -130,6 +130,39 @@ function applyRecordRotation(record, playing) {
   record.classList.toggle('record--spinning', shouldSpin);
 }
 
+function setConnectionState(connected) {
+  const nextConnected = connected === true;
+  const wasConnected = previousConnected;
+  previousConnected = nextConnected;
+
+  const changed = wasConnected !== null && wasConnected !== nextConnected;
+  document.body.classList.toggle('is-disconnected', !nextConnected);
+
+  if (!animationsEnabled || !changed) {
+    document.body.classList.remove('connection-lost', 'connection-restored');
+    return;
+  }
+
+  if (nextConnected) {
+    document.body.classList.remove('connection-lost');
+    void document.body.offsetWidth;
+    document.body.classList.add('connection-restored');
+  } else {
+    document.body.classList.remove('connection-restored');
+    void document.body.offsetWidth;
+    document.body.classList.add('connection-lost');
+
+    const record = document.querySelector('.record');
+    if (record) {
+      record.classList.remove('record--spinning', 'record--enter');
+    }
+  }
+
+  window.setTimeout(() => {
+    document.body.classList.remove('connection-lost', 'connection-restored');
+  }, 750);
+}
+
 function setArtworkGlow(src) {
   const recordStage = document.querySelector('.record-stage');
   if (!recordStage) {
@@ -148,50 +181,6 @@ function setArtworkGlow(src) {
 function finishRecordEntrance(record, playing) {
   record.classList.remove('record--enter');
   applyRecordRotation(record, playing);
-}
-
-function setConnectionState(connected, animate = true) {
-  const wasConnected = previousConnected;
-  previousConnected = connected;
-
-  const changed = wasConnected !== null && wasConnected !== connected;
-  const shouldAnimate = animate && animationsEnabled && changed;
-
-  document.body.classList.toggle('is-disconnected', !connected);
-  document.body.classList.toggle('is-connected-transition', shouldAnimate);
-
-  const info = document.querySelector('.info');
-  const record = document.querySelector('.record');
-
-  if (!connected) {
-    document.body.classList.remove('is-playing');
-    if (record) {
-      record.classList.remove('record--spinning', 'record--enter');
-    }
-    if (shouldAnimate) {
-      document.body.classList.add('connection-lost');
-      window.setTimeout(() => {
-        document.body.classList.remove('connection-lost', 'is-connected-transition');
-      }, 750);
-    }
-    return;
-  }
-
-  if (shouldAnimate) {
-    document.body.classList.add('connection-restored');
-    window.setTimeout(() => {
-      document.body.classList.remove('connection-restored', 'is-connected-transition');
-    }, 750);
-  }
-
-  if (info && shouldAnimate) {
-    info.classList.remove('info--change');
-    void info.offsetWidth;
-    info.classList.add('info--change');
-    window.setTimeout(() => {
-      info.classList.remove('info--change');
-    }, 680);
-  }
 }
 
 function animateTrackChange(artwork, newArtworkUrl, playing) {
