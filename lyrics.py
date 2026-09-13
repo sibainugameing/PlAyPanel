@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 import re
@@ -11,7 +12,9 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 
-LRCLIB_URL = "https://lrclib.net/api/get"
+LRCLIB_GET_URL = "https://lrclib.net/api/get"
+LRCLIB_SEARCH_URL = "https://lrclib.net/api/search"
+CACHE_VERSION = "v2"
 
 
 class LyricsService:
@@ -25,12 +28,34 @@ class LyricsService:
 
     @staticmethod
     def _normalize(value: str) -> str:
-        return " ".join((value or "").strip().lower().split())
+        value = (value or "").strip().lower()
+        value = re.sub(r"[\u3000\s]+", " ", value)
+        return value.strip()
 
     @classmethod
     def _key(cls, title: str, artist: str, album: str) -> str:
-        raw = "\x1f".join((cls._normalize(artist), cls._normalize(title), cls._normalize(album)))
+        raw = "\x1f".join((CACHE_VERSION, cls._normalize(artist), cls._normalize(title), cls._normalize(album)))
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def _similarity(cls, left: str, right: str) -> float:
+        return difflib.SequenceMatcher(None, cls._normalize(left), cls._normalize(right)).ratio()
+
+    @classmethod
+    def _candidate_score(cls, title: str, artist: str, candidate: dict) -> float:
+        candidate_title = str(candidate.get("trackName") or candidate.get("name") or "")
+        candidate_artist = str(candidate.get("artistName") or candidate.get("artist") or "")
+        title_score = cls._similarity(title, candidate_title)
+        artist_score = cls._similarity(artist, candidate_artist)
+
+        normalized_title = cls._normalize(title)
+        normalized_candidate_title = cls._normalize(candidate_title)
+        normalized_artist = cls._normalize(artist)
+        normalized_candidate_artist = cls._normalize(candidate_artist)
+
+        exact_bonus = 0.35 if normalized_title == normalized_candidate_title else 0.0
+        artist_bonus = 0.20 if normalized_artist == normalized_candidate_artist else 0.0
+        return title_score * 0.65 + artist_score * 0.35 + exact_bonus + artist_bonus
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.db_path)
@@ -67,7 +92,15 @@ class LyricsService:
             db.commit()
             return dict(row)
 
-    def _save(self, key: str, title: str, artist: str, album: str, synced: str | None, plain: str | None) -> None:
+    def _save(
+        self,
+        key: str,
+        title: str,
+        artist: str,
+        album: str,
+        synced: str | None,
+        plain: str | None,
+    ) -> None:
         now = time.time()
         found = int(bool(synced or plain))
         with self._connect() as db:
@@ -97,21 +130,54 @@ class LyricsService:
             )
             db.commit()
 
-    def _fetch_remote(self, title: str, artist: str, album: str) -> tuple[str | None, str | None]:
-        query = urlencode({
-            "artist_name": artist,
-            "track_name": title,
-            "album_name": album,
-        })
+    @staticmethod
+    def _request_json(url: str, params: dict[str, str]) -> object:
+        query = urlencode(params)
         request = Request(
-            f"{LRCLIB_URL}?{query}",
+            f"{url}?{query}",
             headers={"User-Agent": "PlayPanel/1.0"},
         )
-        with urlopen(request, timeout=self.timeout_seconds) as response:
+        with urlopen(request, timeout=8.0) as response:
             if response.status != 200:
                 raise RuntimeError(f"LRCLIB HTTP {response.status}")
-            payload = json.loads(response.read().decode("utf-8"))
+            return json.loads(response.read().decode("utf-8"))
+
+    def _fetch_exact(self, title: str, artist: str, album: str) -> tuple[str | None, str | None]:
+        payload = self._request_json(
+            LRCLIB_GET_URL,
+            {
+                "artist_name": artist,
+                "track_name": title,
+                "album_name": album,
+            },
+        )
+        if not isinstance(payload, dict):
+            raise RuntimeError("Invalid LRCLIB exact response")
         return payload.get("syncedLyrics"), payload.get("plainLyrics")
+
+    def _fetch_search_candidate(self, title: str, artist: str) -> tuple[str | None, str | None] | None:
+        payload = self._request_json(
+            LRCLIB_SEARCH_URL,
+            {"q": f"{artist} {title}"},
+        )
+        if not isinstance(payload, list):
+            raise RuntimeError("Invalid LRCLIB search response")
+
+        candidates = [item for item in payload if isinstance(item, dict)]
+        if not candidates:
+            return None
+
+        candidates.sort(key=lambda item: self._candidate_score(title, artist, item), reverse=True)
+        best = candidates[0]
+        score = self._candidate_score(title, artist, best)
+        if score < 0.72:
+            return None
+
+        synced = best.get("syncedLyrics")
+        plain = best.get("plainLyrics")
+        if not synced and not plain:
+            return None
+        return synced, plain
 
     def get(self, title: str, artist: str, album: str) -> dict:
         title = (title or "").strip()
@@ -127,13 +193,21 @@ class LyricsService:
             return self._format_result(cached)
 
         try:
-            synced, plain = self._fetch_remote(title, artist, album)
+            synced, plain = self._fetch_exact(title, artist, album)
         except HTTPError as error:
             if error.code == 404:
-                self._save(key, title, artist, album, None, None)
-                cached = self._get_cached(key)
-                return self._format_result(cached or {})
-            return {"found": False, "synced": False, "lines": [], "error": "lookup_failed"}
+                try:
+                    fallback = self._fetch_search_candidate(title, artist)
+                except Exception:
+                    fallback = None
+                if fallback is not None:
+                    synced, plain = fallback
+                else:
+                    self._save(key, title, artist, album, None, None)
+                    cached = self._get_cached(key)
+                    return self._format_result(cached or {})
+            else:
+                return {"found": False, "synced": False, "lines": [], "error": "lookup_failed"}
         except Exception:
             return {"found": False, "synced": False, "lines": [], "error": "lookup_failed"}
 
