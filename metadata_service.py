@@ -42,6 +42,12 @@ class MetadataService:
             connected=state.connected,
             client_name=state.client_name,
             track_id=state.track_id,
+            progress_start_rtp=state.progress_start_rtp,
+            progress_current_rtp=state.progress_current_rtp,
+            progress_end_rtp=state.progress_end_rtp,
+            progress_elapsed_seconds=state.progress_elapsed_seconds,
+            progress_anchor_monotonic=state.progress_anchor_monotonic,
+            song_duration_seconds=state.song_duration_seconds,
         )
 
     def _remember_artwork(self, state: TrackMetadata) -> None:
