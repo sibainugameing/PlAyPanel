@@ -5,15 +5,16 @@
 
   if (!svg || !progress) return;
 
-  const radius = Number(progress.getAttribute('r')) || 47.9;
+  // Use SVG presentation attributes for dash values. CSS length values are
+  // resolved in CSS pixels and can produce multiple dashes on a large SVG.
+  const radius = Number(progress.getAttribute('r')) || 48;
   const circumference = 2 * Math.PI * radius;
 
-  progress.style.strokeDasharray = `${circumference} ${circumference}`;
-  progress.style.strokeDashoffset = `${circumference}`;
+  progress.setAttribute('stroke-dasharray', `${circumference} ${circumference}`);
+  progress.setAttribute('stroke-dashoffset', `${circumference}`);
 
   const formatTime = (seconds, unknown = '--:--') => {
     if (!Number.isFinite(seconds) || seconds < 0) return unknown;
-
     const total = Math.floor(seconds);
     const minutes = Math.floor(total / 60);
     const remainder = total % 60;
@@ -31,12 +32,12 @@
 
     if (!playback || playback.available !== true || !Number.isFinite(playback.ratio)) {
       svg.classList.remove('is-available', 'is-complete', 'is-playing');
-      progress.style.strokeDashoffset = `${circumference}`;
+      progress.setAttribute('stroke-dashoffset', `${circumference}`);
       return;
     }
 
     const ratio = Math.min(1, Math.max(0, Number(playback.ratio)));
-    progress.style.strokeDashoffset = String(circumference * (1 - ratio));
+    progress.setAttribute('stroke-dashoffset', String(circumference * (1 - ratio)));
 
     svg.classList.add('is-available');
     svg.classList.toggle('is-playing', data.playing === true);
