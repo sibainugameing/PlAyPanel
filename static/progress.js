@@ -56,6 +56,16 @@
       stroke-width: 4.4;
       filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55));
     }
+
+    .progress-time {
+      margin: 0 0 14px;
+      color: rgba(255, 255, 255, 0.58);
+      font-size: 0.92rem;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: 0.08em;
+      font-variant-numeric: tabular-nums;
+    }
   `;
   document.head.appendChild(style);
 
