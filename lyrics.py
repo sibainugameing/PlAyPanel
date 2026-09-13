@@ -14,7 +14,7 @@ from urllib.request import Request, urlopen
 
 LRCLIB_GET_URL = "https://lrclib.net/api/get"
 LRCLIB_SEARCH_URL = "https://lrclib.net/api/search"
-CACHE_VERSION = "v4"
+CACHE_VERSION = "v5"
 
 
 class LyricsService:
@@ -79,14 +79,12 @@ class LyricsService:
     def _title_similarity(cls, wanted_title: str, candidate_title: str) -> float:
         candidate = cls._normalize(candidate_title)
         best = 0.0
-
         for variant in cls._title_variants(wanted_title):
             normalized = cls._normalize(variant)
             score = cls._similarity(normalized, candidate)
             if normalized and (normalized in candidate or candidate in normalized):
                 score = max(score, 0.97 if normalized == candidate else 0.90)
             best = max(best, score)
-
         return best
 
     @classmethod
@@ -117,7 +115,7 @@ class LyricsService:
         exact_album = bool(album) and cls._normalize(album) == cls._normalize(candidate_album)
         has_synced = int(bool(candidate.get("syncedLyrics")))
 
-        score = title_score * 0.60 + artist_score * 0.30 + album_score * 0.10
+        score = title_score * 0.65 + artist_score * 0.30 + album_score * 0.05
         if exact_title:
             score += 0.25
         if exact_artist:
@@ -221,18 +219,67 @@ class LyricsService:
                 raise RuntimeError(f"LRCLIB HTTP {response.status}")
             return json.loads(response.read().decode("utf-8"))
 
-    def _fetch_exact(self, title: str, artist: str, album: str) -> tuple[str | None, str | None]:
-        payload = self._request_json(
-            LRCLIB_GET_URL,
-            {
-                "artist_name": artist,
-                "track_name": title,
-                "album_name": album,
-            },
-        )
+    def _fetch_exact(
+        self,
+        title: str,
+        artist: str,
+        album: str = "",
+    ) -> tuple[str | None, str | None]:
+        params = {
+            "artist_name": artist,
+            "track_name": title,
+        }
+        if album:
+            params["album_name"] = album
+
+        payload = self._request_json(LRCLIB_GET_URL, params)
         if not isinstance(payload, dict):
             raise RuntimeError("Invalid LRCLIB exact response")
         return payload.get("syncedLyrics"), payload.get("plainLyrics")
+
+    def _fetch_by_id(self, track_id: object) -> tuple[str | None, str | None]:
+        payload = self._request_json(LRCLIB_GET_URL, {"id": str(track_id)})
+        if not isinstance(payload, dict):
+            raise RuntimeError("Invalid LRCLIB track response")
+        return payload.get("syncedLyrics"), payload.get("plainLyrics")
+
+    def _fetch_search_candidates(self, title: str, artist: str, album: str) -> list[dict]:
+        variants = self._title_variants(title)
+        all_candidates: dict[str, dict] = {}
+
+        # Search by track title alone first. This is important when the
+        # streaming service localizes or otherwise changes the artist name.
+        for search_title in variants:
+            payload = self._request_json(
+                LRCLIB_SEARCH_URL,
+                {"track_name": search_title},
+            )
+            if not isinstance(payload, list):
+                continue
+            for item in payload:
+                if not isinstance(item, dict):
+                    continue
+                candidate_id = str(item.get("id") or "")
+                key = candidate_id or json.dumps(item, sort_keys=True, ensure_ascii=False)
+                all_candidates[key] = item
+
+        # A general query is useful when track_name search has no result.
+        if not all_candidates:
+            for search_title in variants:
+                payload = self._request_json(
+                    LRCLIB_SEARCH_URL,
+                    {"q": search_title},
+                )
+                if not isinstance(payload, list):
+                    continue
+                for item in payload:
+                    if not isinstance(item, dict):
+                        continue
+                    candidate_id = str(item.get("id") or "")
+                    key = candidate_id or json.dumps(item, sort_keys=True, ensure_ascii=False)
+                    all_candidates[key] = item
+
+        return list(all_candidates.values())
 
     def _fetch_search_candidate(
         self,
@@ -240,63 +287,32 @@ class LyricsService:
         artist: str,
         album: str,
     ) -> tuple[str | None, str | None] | None:
-        variants = self._title_variants(title)
-        search_title = min(variants, key=lambda value: len(self._normalize(value)))
-
-        payload = self._request_json(
-            LRCLIB_SEARCH_URL,
-            {"q": f"{artist} {search_title}"},
-        )
-        if not isinstance(payload, list):
-            raise RuntimeError("Invalid LRCLIB search response")
-
-        candidates = [item for item in payload if isinstance(item, dict)]
+        candidates = self._fetch_search_candidates(title, artist, album)
         if not candidates:
             return None
 
-        # Select by title/artist similarity first, then prefer synced lyrics.
         candidates.sort(
             key=lambda item: self._candidate_score(title, artist, album, item),
             reverse=True,
         )
 
-        wanted_artist = self._normalize(artist)
-        matching_artist = [
-            item
+        scored = [
+            (self._candidate_score(title, artist, album, item), item)
             for item in candidates
-            if self._normalize(
-                str(item.get("artistName") or item.get("artist") or "")
-            )
-            == wanted_artist
         ]
-        pool = matching_artist or candidates
+        scored = [item for item in scored if item[0][1] >= 0.72]
+        scored.sort(key=lambda item: item[0], reverse=True)
 
-        scored_candidates = []
-        for candidate in pool:
-            has_synced, score = self._candidate_score(title, artist, album, candidate)
-            if score >= 0.72:
-                scored_candidates.append((has_synced, score, candidate))
-
-        # A synced result is more useful than an otherwise similar plain-only
-        # result. Keep similarity as the secondary criterion.
-        scored_candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
-
-        for _has_synced, _score, candidate in scored_candidates:
+        for (_has_synced, _score), candidate in scored:
             synced = candidate.get("syncedLyrics")
             plain = candidate.get("plainLyrics")
             track_id = candidate.get("id")
 
-            # Search results can omit lyric fields. Resolve the selected track
-            # by its LRCLIB id so that synchronized lyrics are not discarded.
             if track_id is not None:
                 try:
-                    resolved = self._request_json(
-                        LRCLIB_GET_URL,
-                        {"id": str(track_id)},
-                    )
-                    if isinstance(resolved, dict):
-                        synced = resolved.get("syncedLyrics") or synced
-                        plain = resolved.get("plainLyrics") or plain
+                    resolved_synced, resolved_plain = self._fetch_by_id(track_id)
+                    synced = resolved_synced or synced
+                    plain = resolved_plain or plain
                 except Exception:
                     pass
 
@@ -311,8 +327,7 @@ class LyricsService:
         artist: str,
         album: str,
     ) -> tuple[str | None, str | None]:
-        # Album metadata from streaming services often differs from LRCLIB,
-        # so exact lookup is attempted first but search is the fallback.
+        # 1. Try full metadata.
         try:
             synced, plain = self._fetch_exact(title, artist, album)
             if synced or plain:
@@ -321,6 +336,16 @@ class LyricsService:
             if error.code != 404:
                 raise
 
+        # 2. Ignore album mismatch completely.
+        try:
+            synced, plain = self._fetch_exact(title, artist)
+            if synced or plain:
+                return synced, plain
+        except HTTPError as error:
+            if error.code != 404:
+                raise
+
+        # 3. Search by title only, including simplified title variants.
         fallback = self._fetch_search_candidate(title, artist, album)
         if fallback is None:
             return None, None
