@@ -46,11 +46,11 @@ class TrackMetadata:
         )
         self.progress_anchor_monotonic = time.monotonic() if self.playing is True else None
 
-    def set_song_duration_frames(self, frames: int) -> None:
-        if frames <= 0 or frames >= RTP_MODULUS:
+    def set_song_duration_milliseconds(self, milliseconds: int) -> None:
+        if milliseconds <= 0:
             self.song_duration_seconds = None
             return
-        self.song_duration_seconds = frames / RTP_CLOCK_RATE
+        self.song_duration_seconds = milliseconds / 1000.0
 
     def reset_progress(self) -> None:
         self.progress_start_rtp = None
