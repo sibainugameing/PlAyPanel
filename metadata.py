@@ -159,11 +159,17 @@ def _parse_progress(payload: bytes) -> tuple[int, int, int] | None:
 
 
 def _reset_progress(state: TrackMetadata) -> None:
-    state.progress_start_rtp = None
-    state.progress_current_rtp = None
-    state.progress_end_rtp = None
-    state.progress_elapsed_seconds = 0.0
-    state.progress_anchor_monotonic = None
+    state.reset_progress()
+
+
+def _parse_song_time_frames(payload: bytes) -> int | None:
+    if len(payload) != 4:
+        return None
+
+    frames = int.from_bytes(payload, byteorder="big", signed=False)
+    if frames == 0 or frames == 0xFFFFFFFF:
+        return None
+    return frames
 
 
 def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
@@ -217,7 +223,21 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         if progress is not None:
             state.set_progress(*progress)
         else:
-            print(f"Invalid Shairport progress metadata: {_metadata_text(payload)!r}", flush=True)
+            print(
+                f"Invalid Shairport progress metadata: {_metadata_text(payload)!r}",
+                flush=True,
+            )
+        return
+
+    if code == "astm":
+        frames = _parse_song_time_frames(payload)
+        if frames is not None:
+            state.set_song_duration_frames(frames)
+        else:
+            print(
+                f"Invalid Shairport song-time metadata: {payload.hex()!r}",
+                flush=True,
+            )
         return
 
     if code == "conn":
