@@ -3,11 +3,26 @@
   const lyricsConfig = config.lyrics ?? {};
   if (lyricsConfig.enabled !== true) return;
 
-  const panel = document.querySelector('#lyrics-panel');
-  const linesElement = document.querySelector('#lyrics-lines');
-  const statusElement = document.querySelector('#lyrics-status');
-  const info = document.querySelector('.track-copy');
-  if (!panel || !linesElement || !statusElement || !info) return;
+  const info = document.querySelector('.info');
+  const trackCopy = document.querySelector('.track-copy');
+  if (!info || !trackCopy) return;
+
+  const panel = document.createElement('div');
+  panel.id = 'lyrics-panel';
+  panel.className = 'lyrics-panel';
+  panel.hidden = true;
+  panel.setAttribute('aria-label', 'Lyrics');
+
+  const linesElement = document.createElement('div');
+  linesElement.id = 'lyrics-lines';
+  linesElement.className = 'lyrics-lines';
+
+  const statusElement = document.createElement('p');
+  statusElement.id = 'lyrics-status';
+  statusElement.className = 'lyrics-status';
+
+  panel.append(linesElement, statusElement);
+  trackCopy.after(panel);
 
   const visibleLines = Math.max(3, Number(lyricsConfig.visibleLines) || 5);
   let trackKey = null;
@@ -26,8 +41,9 @@
   toggle.className = 'lyrics-toggle';
   toggle.textContent = 'LYRICS';
   toggle.hidden = true;
-  toggle.setAttribute('aria-label', '歌詞表示を切り替え');
-  info.after(toggle);
+  toggle.setAttribute('aria-label', 'Toggle lyrics view');
+  toggle.setAttribute('aria-pressed', 'false');
+  panel.after(toggle);
 
   function setStatus(text) {
     statusElement.textContent = text;
@@ -36,6 +52,7 @@
   function setMode(enabled) {
     lyricsMode = enabled && lyricsAvailable;
     document.body.classList.toggle('lyrics-mode', lyricsMode);
+    panel.hidden = !lyricsMode;
     toggle.textContent = lyricsMode ? 'TRACK' : 'LYRICS';
     toggle.setAttribute('aria-pressed', String(lyricsMode));
   }
@@ -44,7 +61,8 @@
     linesElement.replaceChildren();
     if (!lyricLines.length) return;
 
-    const start = Math.max(0, currentIndex - Math.floor(visibleLines / 2));
+    let start = Math.max(0, currentIndex - Math.floor(visibleLines / 2));
+    if (currentIndex < 0) start = 0;
     const end = Math.min(lyricLines.length, start + visibleLines);
 
     for (let index = start; index < end; index += 1) {
@@ -53,7 +71,7 @@
       element.className = 'lyrics-line';
       element.textContent = line.text || '♪';
       if (index === currentIndex) element.classList.add('is-current');
-      else if (Math.abs(index - currentIndex) === 1) element.classList.add('is-near');
+      else if (currentIndex >= 0 && Math.abs(index - currentIndex) === 1) element.classList.add('is-near');
       linesElement.appendChild(element);
     }
   }
@@ -80,9 +98,6 @@
       currentIndex = nextIndex;
       renderLines();
     }
-    if (currentIndex >= 0) {
-      setStatus(`${Math.floor(positionMs / 60000)}:${String(Math.floor(positionMs / 1000) % 60).padStart(2, '0')}`);
-    }
   }
 
   function startTimer() {
@@ -90,7 +105,7 @@
     updateTimer = window.setInterval(updateSync, 100);
   }
 
-  async function loadLyrics(data, key) {
+  async function loadLyrics(key) {
     if (fetchController) fetchController.abort();
     fetchController = new AbortController();
     const controller = fetchController;
@@ -99,9 +114,11 @@
     currentIndex = -1;
     lyricsAvailable = false;
     linesElement.replaceChildren();
-    setMode(false);
+    panel.hidden = true;
     toggle.hidden = true;
-    setStatus('歌詞を検索中');
+    document.body.classList.remove('lyrics-mode');
+    lyricsMode = false;
+    setStatus('Searching lyrics');
 
     try {
       const response = await fetch('/lyrics.json', {
@@ -116,7 +133,7 @@
       lyricsAvailable = result.synced === true && lyricLines.length > 0;
 
       if (!lyricsAvailable) {
-        setStatus(result.found ? '同期歌詞なし' : '歌詞なし');
+        setStatus(result.found ? 'No synchronized lyrics' : 'Lyrics unavailable');
         return;
       }
 
@@ -129,7 +146,7 @@
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (trackKey !== key) return;
-      setStatus('歌詞取得失敗');
+      setStatus('Lyrics lookup failed');
     }
   }
 
@@ -145,16 +162,13 @@
       playing = nextPlaying;
       startedAt = performance.now();
       pausedAt = 0;
-      loadLyrics(data, key);
+      if (title && artist) loadLyrics(key);
       return;
     }
 
     if (playing !== nextPlaying) {
-      if (nextPlaying) {
-        startedAt = performance.now() - pausedAt;
-      } else {
-        pausedAt = Math.max(0, performance.now() - startedAt);
-      }
+      if (nextPlaying) startedAt = performance.now() - pausedAt;
+      else pausedAt = Math.max(0, performance.now() - startedAt);
       playing = nextPlaying;
     }
 
