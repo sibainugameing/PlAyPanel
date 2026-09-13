@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='backgrounds.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='record-playback.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='lyrics.css') }}">
 </head>
 <body
   data-background-mode="{{ config.background_mode }}"
@@ -31,6 +32,8 @@
     --info-change-duration: {{ config.info_change_duration }}ms;
     --info-change-distance: {{ config.info_change_distance }}px;
     --animation-easing: {{ config.animation_easing }};
+    --lyrics-current-size: {{ config.lyrics_current_size }};
+    --lyrics-side-size: {{ config.lyrics_side_size }};
   "
 >
   {% if config.clock_enabled %}
@@ -64,6 +67,11 @@
         <p id="album" class="album">---</p>
       </div>
 
+      <div class="lyrics-panel" id="lyrics-panel" hidden aria-label="歌詞">
+        <div id="lyrics-lines" class="lyrics-lines"></div>
+        <p id="lyrics-status" class="lyrics-status"></p>
+      </div>
+
       <div class="info-line" aria-hidden="true"></div>
       <p class="product-name">PlayPanel</p>
     </section>
@@ -77,6 +85,10 @@
     window.PLAYPANEL_CONFIG = {
       pollIntervalMs: {{ config.poll_interval_ms }},
       artworkRetryIntervalMs: {{ config.artwork_retry_interval_ms }},
+      lyrics: {
+        enabled: {{ 'true' if config.lyrics_enabled else 'false' }},
+        visibleLines: {{ config.lyrics_visible_lines }},
+      },
       display: {
         clockEnabled: {{ 'true' if config.clock_enabled else 'false' }},
         screenBlankEnabled: {{ 'true' if config.screen_blank_enabled else 'false' }},
