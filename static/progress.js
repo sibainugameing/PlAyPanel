@@ -2,20 +2,13 @@
   const stage = document.querySelector('.record-stage');
   if (!stage) return;
 
-  // background.js loads this script. Keep this guard so an accidental
-  // duplicate script tag can never create a second progress ring.
+  // Never create more than one progress ring.
   if (stage.querySelector('.record-progress')) return;
 
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('record-progress');
   svg.setAttribute('viewBox', '0 0 100 100');
   svg.setAttribute('aria-hidden', 'true');
-
-  const base = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  base.classList.add('record-progress__base');
-  base.setAttribute('cx', '50');
-  base.setAttribute('cy', '50');
-  base.setAttribute('r', '48.7');
 
   const progress = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
   progress.classList.add('record-progress__value');
@@ -24,7 +17,7 @@
   progress.setAttribute('r', '48.7');
   progress.setAttribute('pathLength', '1');
 
-  svg.append(base, progress);
+  svg.append(progress);
   stage.appendChild(svg);
 
   progress.style.strokeDasharray = '1 1';
@@ -45,22 +38,13 @@
       transition: opacity 500ms ease;
     }
 
-    .record-progress__base,
     .record-progress__value {
       fill: none;
       vector-effect: non-scaling-stroke;
-    }
-
-    .record-progress__base {
-      stroke: rgba(255, 255, 255, 0.07);
-      stroke-width: 1.8;
-    }
-
-    .record-progress__value {
-      stroke: rgba(255, 255, 255, 0.96);
-      stroke-width: 3.6;
+      stroke: rgba(255, 255, 255, 0.97);
+      stroke-width: 3.8;
       stroke-linecap: round;
-      filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.35));
+      filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.38));
       transition: stroke-dashoffset 180ms linear;
     }
 
@@ -69,7 +53,8 @@
     }
 
     .record-progress.is-complete .record-progress__value {
-      stroke-width: 4.2;
+      stroke-width: 4.4;
+      filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.55));
     }
   `;
   document.head.appendChild(style);
