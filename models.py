@@ -44,7 +44,10 @@ class TrackMetadata:
             elapsed_frames / RTP_CLOCK_RATE,
             duration_frames / RTP_CLOCK_RATE if duration_frames else float("inf"),
         )
-        self.progress_anchor_monotonic = time.monotonic() if self.playing is True else None
+
+        # prgr is a snapshot of the current RTP position. Always record the
+        # receipt time so a later transition to Playing can continue from it.
+        self.progress_anchor_monotonic = time.monotonic()
 
     def set_song_duration_milliseconds(self, milliseconds: int) -> None:
         if milliseconds <= 0:
