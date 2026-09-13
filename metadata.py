@@ -142,6 +142,30 @@ def _fallback_track_id(state: TrackMetadata) -> str:
     return f"fallback:{value}" if value else ""
 
 
+def _parse_progress(payload: bytes) -> tuple[int, int, int] | None:
+    value = _metadata_text(payload)
+    parts = value.split("/")
+    if len(parts) != 3:
+        return None
+
+    try:
+        start, current, end = (int(part.strip()) for part in parts)
+    except ValueError:
+        return None
+
+    if not all(0 <= value < 2**32 for value in (start, current, end)):
+        return None
+    return start, current, end
+
+
+def _reset_progress(state: TrackMetadata) -> None:
+    state.progress_start_rtp = None
+    state.progress_current_rtp = None
+    state.progress_end_rtp = None
+    state.progress_elapsed_seconds = 0.0
+    state.progress_anchor_monotonic = None
+
+
 def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
     _type_code, code, declared_length, payload = item
 
@@ -176,6 +200,7 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         old_track_id = state.track_id
         old_artwork_track_id = state.artwork_track_id
         state.track_id = new_track_id
+        _reset_progress(state)
 
         if state.artwork is not None:
             if not old_artwork_track_id:
@@ -187,21 +212,37 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
                 state.artwork_track_id = ""
         return
 
+    if code == "prgr":
+        progress = _parse_progress(payload)
+        if progress is not None:
+            state.set_progress(*progress)
+        else:
+            print(f"Invalid Shairport progress metadata: {_metadata_text(payload)!r}", flush=True)
+        return
+
     if code == "conn":
         state.connected = True
         return
 
     if code == "disc":
+        state.freeze_progress()
         state.connected = False
         state.playing = False
         return
 
-    if code in {"pbeg", "prsm"}:
+    if code == "pbeg":
         state.connected = True
         state.playing = True
+        state.resume_progress()
+        return
+
+    if code == "prsm":
+        state.playing = True
+        state.resume_progress()
         return
 
     if code in {"pend", "aend", "pfls"}:
+        state.freeze_progress()
         state.playing = False
         return
 
@@ -235,7 +276,13 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         return
 
     if code == "caps" and payload:
-        state.playing = payload[0] == 1
+        is_playing = payload[0] == 1
+        if is_playing:
+            state.playing = True
+            state.resume_progress()
+        else:
+            state.freeze_progress()
+            state.playing = False
 
 
 def metadata_items(stream: BinaryIO) -> Iterator[tuple[str, str, int, bytes]]:
