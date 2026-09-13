@@ -12,9 +12,9 @@ from pathlib import Path
 DEFAULT_PIPE = Path("/tmp/playpanel-test-metadata")
 
 TRACKS = [
-    {"id": "playpanel-test-01", "title": "PlayPanel Test Track", "artist": "PlayPanel", "album": "README Demo"},
-    {"id": "playpanel-test-02", "title": "Second Test Track", "artist": "PlayPanel", "album": "README Demo"},
-    {"id": "playpanel-test-03", "title": "Album Art Test", "artist": "PlayPanel", "album": "README Demo"},
+    {"id": "playpanel-test-01", "title": "PlayPanel Test Track", "artist": "PlayPanel", "album": "README Demo", "duration_ms": 180000},
+    {"id": "playpanel-test-02", "title": "Second Test Track", "artist": "PlayPanel", "album": "README Demo", "duration_ms": 210000},
+    {"id": "playpanel-test-03", "title": "Album Art Test", "artist": "PlayPanel", "album": "README Demo", "duration_ms": 150000},
 ]
 
 
@@ -60,8 +60,23 @@ def send_track(stream, track: dict, artwork: bytes) -> None:
     stream.write(item("asar", track["artist"].encode("utf-8")))
     stream.write(item("asal", track["album"].encode("utf-8")))
     stream.write(item("PICT", artwork))
+
+    # core/astm is normally supplied by the AirPlay source. The PlayPanel
+    # parser accepts the 32-bit big-endian song length in milliseconds.
+    stream.write(item("astm", struct.pack(">I", track["duration_ms"])))
+
     stream.write(item("pbeg", b""))
     stream.flush()
+
+    # ssnc/prgr carries start/current/end RTP timestamps. This test starts
+    # at 0 and advances as the simulated track plays.
+    start = 1000000
+    end = start + track["duration_ms"] * 44100 // 1000
+    for elapsed_ms in (0, 1000, 5000, 10000):
+        current = start + elapsed_ms * 44100 // 1000
+        stream.write(item("prgr", f"{start}/{current}/{end}".encode("ascii")))
+        stream.flush()
+        time.sleep(0.2)
 
 
 def main() -> None:
