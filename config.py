@@ -56,6 +56,7 @@ class PlayPanelConfig:
     artwork_retry_interval_ms: int = 3000
     lyrics_enabled: bool = True
     lyrics_cache_dir: str = "lyrics_cache"
+    lyrics_cache_max_entries: int = 500
     lyrics_timeout_seconds: float = 8.0
     lyrics_visible_lines: int = 5
     lyrics_current_size: str = "2.4rem"
@@ -67,7 +68,6 @@ class PlayPanelConfig:
 
 def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
     defaults = PlayPanelConfig()
-
     if not path.exists():
         return defaults
 
@@ -111,12 +111,8 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         background_mode=background_mode,
         background_preset=background_preset,
         background_rgb=resolved_background_rgb,
-        background_artwork_opacity=float(
-            background.get("artwork_opacity", defaults.background_artwork_opacity)
-        ),
-        background_artwork_blur=int(
-            background.get("artwork_blur", defaults.background_artwork_blur)
-        ),
+        background_artwork_opacity=float(background.get("artwork_opacity", defaults.background_artwork_opacity)),
+        background_artwork_blur=int(background.get("artwork_blur", defaults.background_artwork_blur)),
         background_color=str(appearance.get("background_color", defaults.background_color)),
         text_color=str(appearance.get("text_color", defaults.text_color)),
         muted_color=str(appearance.get("muted_color", defaults.muted_color)),
@@ -135,18 +131,15 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         info_change_distance=int(animation.get("info_change_distance", defaults.info_change_distance)),
         animation_easing=str(animation.get("easing", defaults.animation_easing)),
         poll_interval_ms=int(behavior.get("poll_interval_ms", defaults.poll_interval_ms)),
-        artwork_retry_interval_ms=int(
-            behavior.get("artwork_retry_interval_ms", defaults.artwork_retry_interval_ms)
-        ),
+        artwork_retry_interval_ms=int(behavior.get("artwork_retry_interval_ms", defaults.artwork_retry_interval_ms)),
         lyrics_enabled=bool(lyrics.get("enabled", defaults.lyrics_enabled)),
         lyrics_cache_dir=str(lyrics.get("cache_dir", defaults.lyrics_cache_dir)),
+        lyrics_cache_max_entries=int(lyrics.get("cache_max_entries", defaults.lyrics_cache_max_entries)),
         lyrics_timeout_seconds=float(lyrics.get("timeout_seconds", defaults.lyrics_timeout_seconds)),
         lyrics_visible_lines=int(lyrics.get("visible_lines", defaults.lyrics_visible_lines)),
         lyrics_current_size=str(lyrics.get("current_line_size", defaults.lyrics_current_size)),
         lyrics_side_size=str(lyrics.get("side_line_size", defaults.lyrics_side_size)),
         clock_enabled=bool(display.get("clock_enabled", defaults.clock_enabled)),
         screen_blank_enabled=bool(display.get("screen_blank_enabled", defaults.screen_blank_enabled)),
-        screen_blank_timeout_minutes=int(
-            display.get("screen_blank_timeout_minutes", defaults.screen_blank_timeout_minutes)
-        ),
+        screen_blank_timeout_minutes=int(display.get("screen_blank_timeout_minutes", defaults.screen_blank_timeout_minutes)),
     )
