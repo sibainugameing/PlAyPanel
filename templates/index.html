@@ -50,6 +50,17 @@
             <div class="label-fallback" aria-hidden="true">PLAY</div>
           </div>
         </div>
+
+        <svg id="record-progress" class="record-progress" viewBox="0 0 100 100" aria-hidden="true">
+          <circle
+            id="record-progress__value"
+            class="record-progress__value"
+            cx="50"
+            cy="50"
+            r="47.9"
+            fill="none"
+          ></circle>
+        </svg>
       </div>
     </section>
 
@@ -105,5 +116,7 @@
   </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
   <script src="{{ url_for('static', filename='background.js') }}"></script>
+  <script src="{{ url_for('static', filename='lyrics.js') }}"></script>
+  <script src="{{ url_for('static', filename='progress.js') }}"></script>
 </body>
 </html>
