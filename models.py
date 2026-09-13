@@ -31,6 +31,7 @@ class TrackMetadata:
     progress_end_rtp: int | None = None
     progress_elapsed_seconds: float = 0.0
     progress_anchor_monotonic: float | None = None
+    song_duration_seconds: float | None = None
 
     def set_progress(self, start: int, current: int, end: int) -> None:
         duration_frames = rtp_delta(start, end)
@@ -45,6 +46,20 @@ class TrackMetadata:
         )
         self.progress_anchor_monotonic = time.monotonic() if self.playing is True else None
 
+    def set_song_duration_frames(self, frames: int) -> None:
+        if frames <= 0 or frames >= RTP_MODULUS:
+            self.song_duration_seconds = None
+            return
+        self.song_duration_seconds = frames / RTP_CLOCK_RATE
+
+    def reset_progress(self) -> None:
+        self.progress_start_rtp = None
+        self.progress_current_rtp = None
+        self.progress_end_rtp = None
+        self.progress_elapsed_seconds = 0.0
+        self.progress_anchor_monotonic = None
+        self.song_duration_seconds = None
+
     def freeze_progress(self) -> None:
         if self.progress_anchor_monotonic is None:
             return
@@ -52,7 +67,7 @@ class TrackMetadata:
         self.progress_anchor_monotonic = None
 
     def resume_progress(self) -> None:
-        if self.progress_end_rtp is None:
+        if self.duration_seconds() is None:
             return
         self.progress_anchor_monotonic = time.monotonic()
 
@@ -67,16 +82,15 @@ class TrackMetadata:
         return max(0.0, elapsed)
 
     def duration_seconds(self) -> float | None:
-        if self.progress_start_rtp is None or self.progress_end_rtp is None:
-            return None
-        duration_frames = rtp_delta(self.progress_start_rtp, self.progress_end_rtp)
-        if duration_frames <= 0:
-            return None
-        return duration_frames / RTP_CLOCK_RATE
+        if self.progress_start_rtp is not None and self.progress_end_rtp is not None:
+            duration_frames = rtp_delta(self.progress_start_rtp, self.progress_end_rtp)
+            if duration_frames > 0:
+                return duration_frames / RTP_CLOCK_RATE
+        return self.song_duration_seconds
 
     def progress_ratio(self) -> float | None:
         duration = self.duration_seconds()
-        if duration is None:
+        if duration is None or duration <= 0:
             return None
         return min(1.0, max(0.0, self.current_elapsed_seconds() / duration))
 
