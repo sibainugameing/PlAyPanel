@@ -59,6 +59,19 @@ visible_lines = 5
 current_line_size = "2.4rem"
 side_line_size = "1.15rem"
 
+# Positive values make the displayed lyric position later.
+# Example: 0.5 = +0.5 seconds, -0.5 = -0.5 seconds.
+sync_offset_seconds = 0.0
+
+# Current lyric shown at the bottom of the album/track screen.
+bottom_enabled = true
+bottom_font_size = "clamp(.88rem, 1.35vw, 1.06rem)"
+bottom_max_width = "920px"
+bottom_opacity = 0.92
+bottom_animation_enabled = true
+bottom_animation_duration = 520
+bottom_animation_distance = 10
+
 [display]
 clock_enabled = true
 screen_blank_enabled = true
