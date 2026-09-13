@@ -14,14 +14,17 @@
   progress.classList.add('record-progress__value');
   progress.setAttribute('cx', '50');
   progress.setAttribute('cy', '50');
-  progress.setAttribute('r', '48.7');
-  progress.setAttribute('pathLength', '1');
+  // The record fills the stage. Keep the stroke fully inside the SVG viewport
+  // while putting its outer edge exactly at the record's outer edge.
+  const radius = 48.0;
+  progress.setAttribute('r', String(radius));
 
   svg.append(progress);
   stage.appendChild(svg);
 
-  progress.style.strokeDasharray = '1 1';
-  progress.style.strokeDashoffset = '1';
+  const circumference = 2 * Math.PI * radius;
+  progress.style.strokeDasharray = `${circumference} ${circumference}`;
+  progress.style.strokeDashoffset = `${circumference}`;
 
   const style = document.createElement('style');
   style.textContent = `
@@ -31,19 +34,21 @@
       z-index: 8;
       width: 100%;
       height: 100%;
+      display: block;
       overflow: visible;
       pointer-events: none;
       opacity: 0;
       transform: rotate(-90deg);
+      transform-origin: 50% 50%;
       transition: opacity 500ms ease;
     }
 
     .record-progress__value {
       fill: none;
-      vector-effect: non-scaling-stroke;
-      stroke: rgba(255, 255, 255, 0.97);
+      stroke: rgba(255, 255, 255, 0.98);
       stroke-width: 3.8;
       stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
       filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.38));
       transition: stroke-dashoffset 180ms linear;
     }
@@ -89,12 +94,12 @@
 
     if (!playback || playback.available !== true || !Number.isFinite(playback.ratio)) {
       svg.classList.remove('is-available', 'is-complete');
-      progress.style.strokeDashoffset = '1';
+      progress.style.strokeDashoffset = `${circumference}`;
       return;
     }
 
     const ratio = Math.min(1, Math.max(0, Number(playback.ratio)));
-    progress.style.strokeDashoffset = String(1 - ratio);
+    progress.style.strokeDashoffset = String(circumference * (1 - ratio));
 
     svg.classList.add('is-available');
     svg.classList.toggle('is-complete', ratio >= 0.999);
