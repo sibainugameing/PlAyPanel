@@ -162,14 +162,14 @@ def _reset_progress(state: TrackMetadata) -> None:
     state.reset_progress()
 
 
-def _parse_song_time_frames(payload: bytes) -> int | None:
+def _parse_song_time_milliseconds(payload: bytes) -> int | None:
     if len(payload) != 4:
         return None
 
-    frames = int.from_bytes(payload, byteorder="big", signed=False)
-    if frames == 0 or frames == 0xFFFFFFFF:
+    milliseconds = int.from_bytes(payload, byteorder="big", signed=False)
+    if milliseconds <= 0:
         return None
-    return frames
+    return milliseconds
 
 
 def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
@@ -230,9 +230,9 @@ def apply_item(state: TrackMetadata, item: tuple[str, str, int, bytes]) -> None:
         return
 
     if code == "astm":
-        frames = _parse_song_time_frames(payload)
-        if frames is not None:
-            state.set_song_duration_frames(frames)
+        milliseconds = _parse_song_time_milliseconds(payload)
+        if milliseconds is not None:
+            state.set_song_duration_milliseconds(milliseconds)
         else:
             print(
                 f"Invalid Shairport song-time metadata: {payload.hex()!r}",
