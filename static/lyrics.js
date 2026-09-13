@@ -15,6 +15,50 @@
 
   const visibleLines = Math.max(3, Number(lyricsConfig.visibleLines) || 5);
 
+  let syncOffsetSeconds = Number(lyricsConfig.sync_offset_seconds) || 0;
+  let bottomEnabled = lyricsConfig.bottom_enabled !== false;
+  let bottomAnimationEnabled = lyricsConfig.bottom_animation_enabled !== false;
+  let configLoaded = false;
+
+  const applyUiConfig = (settings) => {
+    const lyricSettings = settings?.lyrics ?? {};
+    if (Number.isFinite(Number(lyricSettings.sync_offset_seconds))) {
+      syncOffsetSeconds = Number(lyricSettings.sync_offset_seconds);
+    }
+    bottomEnabled = lyricSettings.bottom_enabled !== false;
+    bottomAnimationEnabled = lyricSettings.bottom_animation_enabled !== false;
+
+    const root = document.documentElement;
+    if (lyricSettings.bottom_font_size) {
+      root.style.setProperty('--lyrics-bottom-font-size', String(lyricSettings.bottom_font_size));
+    }
+    if (lyricSettings.bottom_max_width) {
+      root.style.setProperty('--lyrics-bottom-max-width', String(lyricSettings.bottom_max_width));
+    }
+    if (Number.isFinite(Number(lyricSettings.bottom_opacity))) {
+      root.style.setProperty('--lyrics-bottom-opacity', String(Math.min(1, Math.max(0, Number(lyricSettings.bottom_opacity)))));
+    }
+    if (Number.isFinite(Number(lyricSettings.bottom_animation_duration))) {
+      root.style.setProperty('--lyrics-bottom-animation-duration', `${Math.max(0, Number(lyricSettings.bottom_animation_duration))}ms`);
+    }
+    if (Number.isFinite(Number(lyricSettings.bottom_animation_distance))) {
+      root.style.setProperty('--lyrics-bottom-animation-distance', `${Number(lyricSettings.bottom_animation_distance)}px`);
+    }
+
+    if (!bottomEnabled) hideCurrentLyric();
+    else if (lyricsAvailable && !lyricsMode) showCurrentLyric(false);
+    configLoaded = true;
+  };
+
+  fetch('/ui-config.json', { cache: 'no-store' })
+    .then((response) => response.ok ? response.json() : null)
+    .then((settings) => {
+      if (settings) applyUiConfig(settings);
+    })
+    .catch(() => {
+      configLoaded = true;
+    });
+
   let trackKey = null;
   let lyricLines = [];
   let currentIndex = -1;
@@ -61,6 +105,10 @@
     );
   }
 
+  function getAdjustedPositionMs() {
+    return Math.max(0, getAudioPositionMs() + (syncOffsetSeconds * 1000));
+  }
+
   function findCurrentIndex(positionMs) {
     let index = -1;
     for (let i = 0; i < lyricLines.length; i += 1) {
@@ -78,7 +126,7 @@
 
     const currentTime = Math.max(0, Number(lyricLines[currentIndex]?.time_ms) || 0);
     const nextTime = Number(lyricLines[currentIndex + 1]?.time_ms);
-    const position = getAudioPositionMs();
+    const position = getAdjustedPositionMs();
     const duration = Number.isFinite(nextTime) ? Math.max(1, nextTime - currentTime) : 0;
     const progress = duration > 0
       ? Math.min(1, Math.max(0, (position - currentTime) / duration))
@@ -90,7 +138,7 @@
   }
 
   function showCurrentLyric(animate = false) {
-    if (lyricsMode || !lyricsAvailable || currentIndex < 0 || currentIndex >= lyricLines.length) {
+    if (!bottomEnabled || lyricsMode || !lyricsAvailable || currentIndex < 0 || currentIndex >= lyricLines.length) {
       hideCurrentLyric();
       return;
     }
@@ -105,7 +153,7 @@
     nowLyricBar.classList.remove('is-changing');
     void nowLyricBar.offsetWidth;
     nowLyricBar.classList.add('is-visible');
-    if (animate) nowLyricBar.classList.add('is-changing');
+    if (animate && bottomAnimationEnabled) nowLyricBar.classList.add('is-changing');
   }
 
   function hideCurrentLyric() {
@@ -152,7 +200,7 @@
   function updateSync(forceRender = false) {
     if (!lyricLines.length) return;
 
-    const nextIndex = findCurrentIndex(getAudioPositionMs());
+    const nextIndex = findCurrentIndex(getAdjustedPositionMs());
     if (forceRender || nextIndex !== currentIndex) {
       currentIndex = nextIndex;
       renderLines(true);
@@ -213,7 +261,7 @@
         return;
       }
 
-      currentIndex = findCurrentIndex(getAudioPositionMs());
+      currentIndex = findCurrentIndex(getAdjustedPositionMs());
       renderLines(false);
       toggle.hidden = false;
       setStatus('音声同期');
@@ -254,7 +302,7 @@
     if (!hasAudioPosition) {
       setStatus(lyricsAvailable ? '音声時間待機中' : '歌詞を検索中');
     } else if (lyricsAvailable) {
-      setStatus('音声同期');
+      setStatus(`音声同期 ${syncOffsetSeconds >= 0 ? '+' : ''}${syncOffsetSeconds.toFixed(2)}s`);
     }
 
     updateSync(false);
