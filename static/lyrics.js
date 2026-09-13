@@ -7,8 +7,10 @@
   const linesElement = document.querySelector('#lyrics-lines');
   const statusElement = document.querySelector('#lyrics-status');
   const trackCopy = document.querySelector('.track-copy');
+  const nowLyricBar = document.querySelector('#now-lyric-bar');
+  const nowLyricElement = document.querySelector('#now-lyric');
 
-  if (!panel || !linesElement || !statusElement || !trackCopy) return;
+  if (!panel || !linesElement || !statusElement || !trackCopy || !nowLyricBar || !nowLyricElement) return;
   if (document.querySelector('.lyrics-toggle')) return;
 
   const visibleLines = Math.max(3, Number(lyricsConfig.visibleLines) || 5);
@@ -43,6 +45,12 @@
     panel.hidden = !lyricsMode;
     toggle.textContent = lyricsMode ? 'TRACK' : 'LYRICS';
     toggle.setAttribute('aria-pressed', String(lyricsMode));
+
+    if (!lyricsMode && lyricsAvailable && currentIndex >= 0) {
+      showCurrentLyric(true);
+    } else if (lyricsMode) {
+      hideCurrentLyric();
+    }
   }
 
   function getAudioPositionMs() {
@@ -81,6 +89,31 @@
     if (current) current.style.setProperty('--line-progress', String(progress));
   }
 
+  function showCurrentLyric(animate = false) {
+    if (lyricsMode || !lyricsAvailable || currentIndex < 0 || currentIndex >= lyricLines.length) {
+      hideCurrentLyric();
+      return;
+    }
+
+    const text = lyricLines[currentIndex]?.text?.trim() || '♪';
+    if (nowLyricElement.textContent === text && nowLyricBar.classList.contains('is-visible')) {
+      return;
+    }
+
+    nowLyricElement.textContent = text;
+    nowLyricBar.hidden = false;
+    nowLyricBar.classList.remove('is-changing');
+    void nowLyricBar.offsetWidth;
+    nowLyricBar.classList.add('is-visible');
+    if (animate) nowLyricBar.classList.add('is-changing');
+  }
+
+  function hideCurrentLyric() {
+    nowLyricBar.classList.remove('is-visible', 'is-changing');
+    nowLyricBar.hidden = true;
+    nowLyricElement.textContent = '';
+  }
+
   function renderLines(animate = false) {
     linesElement.replaceChildren();
     if (!lyricLines.length) return;
@@ -113,6 +146,7 @@
     }
 
     updateLineProgress();
+    showCurrentLyric(animate);
   }
 
   function updateSync(forceRender = false) {
@@ -124,6 +158,7 @@
       renderLines(true);
     } else {
       updateLineProgress();
+      showCurrentLyric(false);
     }
   }
 
@@ -146,6 +181,7 @@
     toggle.hidden = true;
     document.body.classList.remove('lyrics-mode');
     lyricsMode = false;
+    hideCurrentLyric();
     panel.style.setProperty('--lyrics-line-progress', '0');
     setStatus('歌詞を検索中');
 
@@ -172,6 +208,7 @@
       lyricsAvailable = result.synced === true && lyricLines.length > 0;
 
       if (!lyricsAvailable) {
+        hideCurrentLyric();
         setStatus(result.found ? '同期歌詞なし' : '歌詞が見つかりません');
         return;
       }
@@ -183,6 +220,7 @@
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (trackKey !== key) return;
+      hideCurrentLyric();
       setStatus('歌詞取得に失敗しました');
     }
   }
@@ -209,6 +247,7 @@
     if (key !== trackKey) {
       trackKey = key;
       if (title && artist) loadLyrics(key);
+      else hideCurrentLyric();
       return;
     }
 
