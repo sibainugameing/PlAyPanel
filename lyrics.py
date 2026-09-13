@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 import time
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -109,7 +111,6 @@ class LyricsService:
             if response.status != 200:
                 raise RuntimeError(f"LRCLIB HTTP {response.status}")
             payload = json.loads(response.read().decode("utf-8"))
-
         return payload.get("syncedLyrics"), payload.get("plainLyrics")
 
     def get(self, title: str, artist: str, album: str) -> dict:
@@ -127,6 +128,12 @@ class LyricsService:
 
         try:
             synced, plain = self._fetch_remote(title, artist, album)
+        except HTTPError as error:
+            if error.code == 404:
+                self._save(key, title, artist, album, None, None)
+                cached = self._get_cached(key)
+                return self._format_result(cached or {})
+            return {"found": False, "synced": False, "lines": [], "error": "lookup_failed"}
         except Exception:
             return {"found": False, "synced": False, "lines": [], "error": "lookup_failed"}
 
@@ -140,7 +147,6 @@ class LyricsService:
             return []
         lines: list[dict] = []
         for raw_line in text.splitlines():
-            import re
             matches = list(re.finditer(r"\[(\d+):(\d{1,2})(?:\.(\d{1,3}))?\]", raw_line))
             if not matches:
                 continue
@@ -148,9 +154,12 @@ class LyricsService:
             for match in matches:
                 minutes = int(match.group(1))
                 seconds = int(match.group(2))
-                fraction = match.group(3) or "0"
-                milliseconds = int(fraction.ljust(3, "0"))
-                lines.append({"time_ms": minutes * 60000 + seconds * 1000 + milliseconds, "text": lyric})
+                fraction = (match.group(3) or "0").ljust(3, "0")[:3]
+                milliseconds = int(fraction)
+                lines.append({
+                    "time_ms": minutes * 60000 + seconds * 1000 + milliseconds,
+                    "text": lyric,
+                })
         lines.sort(key=lambda item: item["time_ms"])
         return lines
 
