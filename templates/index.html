@@ -7,10 +7,15 @@
   <title>PlayPanel</title>
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='backgrounds.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='record-playback.css') }}">
 </head>
 <body
+  data-background-mode="{{ config.background_mode }}"
   style="
+    --background-rgb: {{ config.background_rgb }};
+    --background-artwork-opacity: {{ config.background_artwork_opacity }};
+    --background-artwork-blur: {{ config.background_artwork_blur }}px;
     --artwork-size: {{ config.artwork_size }}px;
     --panel-max-width: {{ config.panel_max_width }}px;
     --panel-gap: {{ config.panel_gap }}px;
@@ -87,5 +92,6 @@
     };
   </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script src="{{ url_for('static', filename='background.js') }}"></script>
 </body>
 </html>
