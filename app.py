@@ -5,6 +5,7 @@ from io import BytesIO
 from flask import Flask, jsonify, render_template, request, send_file
 
 from config import load_config
+from lyrics import LyricsService
 from metadata import DEFAULT_PIPE, detect_image_type
 from metadata_service import MetadataService
 
@@ -12,6 +13,11 @@ from metadata_service import MetadataService
 config = load_config()
 app = Flask(__name__)
 metadata_service = MetadataService(DEFAULT_PIPE)
+lyrics_service = LyricsService(
+    config.lyrics_cache_dir,
+    config.lyrics_timeout_seconds,
+    config.lyrics_cache_max_entries,
+)
 
 
 @app.context_processor
@@ -28,6 +34,23 @@ def index():
 def now_playing():
     state = metadata_service.snapshot()
     return jsonify(state.as_dict())
+
+
+@app.get("/lyrics.json")
+def lyrics():
+    if not config.lyrics_enabled:
+        return jsonify({"enabled": False, "found": False, "synced": False, "lines": []})
+
+    state = metadata_service.snapshot()
+    if not state.title or not state.artist:
+        return jsonify({"enabled": True, "found": False, "synced": False, "lines": []})
+
+    result = lyrics_service.get(state.title, state.artist, state.album)
+    result["enabled"] = True
+    result["title"] = state.title
+    result["artist"] = state.artist
+    result["album"] = state.album
+    return jsonify(result)
 
 
 @app.get("/artwork")
