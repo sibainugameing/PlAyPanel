@@ -30,6 +30,28 @@ def index():
     return render_template("index.html")
 
 
+@app.get("/ui-config.json")
+def ui_config():
+    return jsonify({
+        "lyrics": {
+            "enabled": config.lyrics_enabled,
+            "visible_lines": config.lyrics_visible_lines,
+            "sync_offset_seconds": config.lyrics_sync_offset_seconds,
+            "bottom_enabled": config.lyrics_bottom_enabled,
+            "bottom_font_size": config.lyrics_bottom_font_size,
+            "bottom_max_width": config.lyrics_bottom_max_width,
+            "bottom_opacity": config.lyrics_bottom_opacity,
+            "bottom_animation_enabled": config.lyrics_bottom_animation_enabled,
+            "bottom_animation_duration": config.lyrics_bottom_animation_duration,
+            "bottom_animation_distance": config.lyrics_bottom_animation_distance,
+        },
+        "animation": {
+            "enabled": config.animations_enabled,
+            "easing": config.animation_easing,
+        },
+    })
+
+
 @app.get("/now-playing.json")
 def now_playing():
     state = metadata_service.snapshot()
