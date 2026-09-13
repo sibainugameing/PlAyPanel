@@ -54,6 +54,12 @@ class PlayPanelConfig:
     animation_easing: str = "cubic-bezier(0.22, 1, 0.36, 1)"
     poll_interval_ms: int = 1000
     artwork_retry_interval_ms: int = 3000
+    lyrics_enabled: bool = True
+    lyrics_cache_dir: str = "lyrics_cache"
+    lyrics_timeout_seconds: float = 8.0
+    lyrics_visible_lines: int = 5
+    lyrics_current_size: str = "2.4rem"
+    lyrics_side_size: str = "1.15rem"
     clock_enabled: bool = True
     screen_blank_enabled: bool = True
     screen_blank_timeout_minutes: int = 30
@@ -75,6 +81,7 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
     typography = raw.get("typography", {})
     animation = raw.get("animation", {})
     behavior = raw.get("behavior", {})
+    lyrics = raw.get("lyrics", {})
     display = raw.get("display", {})
 
     background_mode = str(background.get("mode", defaults.background_mode)).strip().lower()
@@ -131,6 +138,12 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         artwork_retry_interval_ms=int(
             behavior.get("artwork_retry_interval_ms", defaults.artwork_retry_interval_ms)
         ),
+        lyrics_enabled=bool(lyrics.get("enabled", defaults.lyrics_enabled)),
+        lyrics_cache_dir=str(lyrics.get("cache_dir", defaults.lyrics_cache_dir)),
+        lyrics_timeout_seconds=float(lyrics.get("timeout_seconds", defaults.lyrics_timeout_seconds)),
+        lyrics_visible_lines=int(lyrics.get("visible_lines", defaults.lyrics_visible_lines)),
+        lyrics_current_size=str(lyrics.get("current_line_size", defaults.lyrics_current_size)),
+        lyrics_side_size=str(lyrics.get("side_line_size", defaults.lyrics_side_size)),
         clock_enabled=bool(display.get("clock_enabled", defaults.clock_enabled)),
         screen_blank_enabled=bool(display.get("screen_blank_enabled", defaults.screen_blank_enabled)),
         screen_blank_timeout_minutes=int(
