@@ -15,6 +15,28 @@ panel_max_width = 1180
 # Space between record and song information.
 panel_gap = 70
 
+[background]
+# Background mode:
+#   artwork_blur = blurred version of the currently playing artwork (default)
+#   preset       = use one of the presets below
+#   rgb          = use the custom RGB value below
+mode = "artwork_blur"
+
+# Presets for mode = "preset":
+# black, graphite, slate, midnight, navy, purple, wine,
+# forest, teal, warm, paper
+preset = "black"
+
+# Custom RGB triplet for mode = "rgb".
+# Example: "18, 24, 32"
+rgb = "8, 8, 8"
+
+# Opacity of the blurred artwork background.
+artwork_opacity = 0.46
+
+# Blur amount in pixels for the artwork background.
+artwork_blur = 52
+
 [appearance]
 background_color = "#080808"
 text_color = "#f5f5f5"
