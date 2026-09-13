@@ -8,6 +8,21 @@ import tomllib
 CONFIG_FILE = Path(__file__).with_name("config.toml")
 
 
+BACKGROUND_PRESETS = {
+    "black": "0, 0, 0",
+    "graphite": "18, 18, 20",
+    "slate": "27, 32, 38",
+    "midnight": "8, 15, 28",
+    "navy": "10, 24, 48",
+    "purple": "28, 12, 42",
+    "wine": "42, 12, 20",
+    "forest": "10, 28, 20",
+    "teal": "8, 30, 30",
+    "warm": "42, 28, 18",
+    "paper": "232, 230, 224",
+}
+
+
 @dataclass(frozen=True)
 class PlayPanelConfig:
     host: str = "0.0.0.0"
@@ -15,6 +30,11 @@ class PlayPanelConfig:
     artwork_size: int = 520
     panel_max_width: int = 1180
     panel_gap: int = 70
+    background_mode: str = "artwork_blur"
+    background_preset: str = "black"
+    background_rgb: str = "0, 0, 0"
+    background_artwork_opacity: float = 0.46
+    background_artwork_blur: int = 52
     background_color: str = "#080808"
     text_color: str = "#f5f5f5"
     muted_color: str = "rgba(245, 245, 245, 0.58)"
@@ -50,11 +70,30 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
 
     server = raw.get("server", {})
     layout = raw.get("layout", {})
+    background = raw.get("background", {})
     appearance = raw.get("appearance", {})
     typography = raw.get("typography", {})
     animation = raw.get("animation", {})
     behavior = raw.get("behavior", {})
     display = raw.get("display", {})
+
+    background_mode = str(background.get("mode", defaults.background_mode)).strip().lower()
+    background_preset = str(background.get("preset", defaults.background_preset)).strip().lower()
+    background_rgb = str(background.get("rgb", defaults.background_rgb)).strip()
+
+    if background_preset in BACKGROUND_PRESETS:
+        resolved_preset_rgb = BACKGROUND_PRESETS[background_preset]
+    else:
+        background_preset = defaults.background_preset
+        resolved_preset_rgb = BACKGROUND_PRESETS[background_preset]
+
+    if background_mode not in {"artwork_blur", "preset", "rgb"}:
+        background_mode = defaults.background_mode
+
+    if background_mode == "preset":
+        resolved_background_rgb = resolved_preset_rgb
+    else:
+        resolved_background_rgb = background_rgb
 
     return PlayPanelConfig(
         host=str(server.get("host", defaults.host)),
@@ -62,6 +101,15 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         artwork_size=int(layout.get("artwork_size", defaults.artwork_size)),
         panel_max_width=int(layout.get("panel_max_width", defaults.panel_max_width)),
         panel_gap=int(layout.get("panel_gap", defaults.panel_gap)),
+        background_mode=background_mode,
+        background_preset=background_preset,
+        background_rgb=resolved_background_rgb,
+        background_artwork_opacity=float(
+            background.get("artwork_opacity", defaults.background_artwork_opacity)
+        ),
+        background_artwork_blur=int(
+            background.get("artwork_blur", defaults.background_artwork_blur)
+        ),
         background_color=str(appearance.get("background_color", defaults.background_color)),
         text_color=str(appearance.get("text_color", defaults.text_color)),
         muted_color=str(appearance.get("muted_color", defaults.muted_color)),
