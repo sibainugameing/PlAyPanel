@@ -8,33 +8,17 @@ port = 8765
 [layout]
 # Album artwork diameter in pixels.
 artwork_size = 520
-
 # Maximum width of the whole panel.
 panel_max_width = 1180
-
 # Space between record and song information.
 panel_gap = 70
 
 [background]
-# Background mode:
-#   artwork_blur = blurred version of the currently playing artwork (default)
-#   preset       = use one of the presets below
-#   rgb          = use the custom RGB value below
+# artwork_blur / preset / rgb
 mode = "artwork_blur"
-
-# Presets for mode = "preset":
-# black, graphite, slate, midnight, navy, purple, wine,
-# forest, teal, warm, paper
 preset = "black"
-
-# Custom RGB triplet for mode = "rgb".
-# Example: "18, 24, 32"
 rgb = "8, 8, 8"
-
-# Opacity of the blurred artwork background.
 artwork_opacity = 0.46
-
-# Blur amount in pixels for the artwork background.
 artwork_blur = 52
 
 [appearance]
@@ -48,58 +32,34 @@ artist_size = "clamp(1.35rem, 2.25vw, 2.15rem)"
 album_size = "1rem"
 
 [animation]
-# Master switch for all PlayPanel animations.
 enabled = true
-
-# Continuous vinyl rotation while the player is playing.
 record_rotation_enabled = true
-# Full revolutions per minute.
 record_rotation_speed = 2.0
-
-# Record-to-record slide when the track changes.
 record_change_enabled = true
-# Duration in milliseconds. Slower gives the exchange more breathing room.
 record_change_duration = 1200
-# Horizontal travel distance as a percentage of the record stage.
 record_change_distance = 105
-# Additional rotation in degrees during the exchange.
 record_change_rotation = 10.0
-
-# Song information fade/slide when the track changes.
 info_change_enabled = true
-# Duration in milliseconds.
 info_change_duration = 650
-# Vertical travel distance in pixels.
 info_change_distance = 10
-
-# CSS easing curve used by the change animations.
 easing = "cubic-bezier(0.25, 0.85, 0.3, 1)"
 
 [behavior]
-# Browser refresh interval for metadata.
 poll_interval_ms = 1000
-# Retry interval for album artwork that is temporarily missing or unavailable.
 artwork_retry_interval_ms = 3000
 
 [lyrics]
-# LRCLIB lyrics feature.
+# Automatically fetch missing lyrics from LRCLIB and cache them locally.
 enabled = true
-# Cached lyrics are stored here after the first successful lookup.
 cache_dir = "lyrics_cache"
-# Maximum time spent waiting for LRCLIB.
+# Oldest least-recently-used entries are removed above this count.
+cache_max_entries = 500
 timeout_seconds = 8.0
-# Number of lyric lines visible around the current line.
 visible_lines = 5
-# Current lyric font size.
 current_line_size = "2.4rem"
-# Surrounding lyric font size.
 side_line_size = "1.15rem"
 
 [display]
-# Small clock at the top of the panel.
 clock_enabled = true
-
-# Dim the entire panel after a period without user interaction.
 screen_blank_enabled = true
-# Minutes without interaction before the screen blanks.
 screen_blank_timeout_minutes = 10
