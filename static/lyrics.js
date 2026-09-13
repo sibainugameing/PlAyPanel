@@ -19,12 +19,8 @@
   let lyricsAvailable = false;
   let lyricsMode = false;
   let playing = false;
-
-  // Shairport Sync audio position is authoritative.
-  // Between metadata polls we interpolate only for visual smoothness.
   let audioPositionMs = 0;
   let audioAnchorPerformanceMs = performance.now();
-
   let fetchController = null;
   let syncTimer = null;
 
@@ -81,12 +77,11 @@
       : 0;
 
     panel.style.setProperty('--lyrics-line-progress', String(progress));
-
     const current = linesElement.querySelector('.lyrics-line.is-current');
     if (current) current.style.setProperty('--line-progress', String(progress));
   }
 
-  function renderLines() {
+  function renderLines(animate = false) {
     linesElement.replaceChildren();
     if (!lyricLines.length) return;
 
@@ -109,6 +104,11 @@
       else if (distance === 1) element.classList.add('is-near');
       else if (distance === 2) element.classList.add('is-far');
 
+      if (animate) {
+        element.classList.add('lyrics-enter');
+        element.style.setProperty('--lyrics-delay', `${Math.min(120, Math.abs(index - currentIndex) * 30)}ms`);
+      }
+
       linesElement.appendChild(element);
     }
 
@@ -121,7 +121,7 @@
     const nextIndex = findCurrentIndex(getAudioPositionMs());
     if (forceRender || nextIndex !== currentIndex) {
       currentIndex = nextIndex;
-      renderLines();
+      renderLines(true);
     } else {
       updateLineProgress();
     }
@@ -177,7 +177,7 @@
       }
 
       currentIndex = findCurrentIndex(getAudioPositionMs());
-      renderLines();
+      renderLines(false);
       toggle.hidden = false;
       setStatus('音声同期');
     } catch (error) {
@@ -196,7 +196,6 @@
     const reportedPositionMs = Number(data.progress?.elapsed_seconds);
     const hasAudioPosition = data.progress?.available === true && Number.isFinite(reportedPositionMs);
 
-    // Always re-anchor to the audio-side clock when available.
     if (hasAudioPosition) {
       audioPositionMs = Math.max(0, reportedPositionMs * 1000);
       audioAnchorPerformanceMs = performance.now();
