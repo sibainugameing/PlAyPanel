@@ -23,14 +23,4 @@
   });
 
   syncArtworkBackground();
-
-  const lyricsScript = document.createElement('script');
-  lyricsScript.src = '/static/lyrics.js';
-  lyricsScript.async = false;
-  document.body.appendChild(lyricsScript);
-
-  const progressScript = document.createElement('script');
-  progressScript.src = '/static/progress.js';
-  progressScript.async = false;
-  document.body.appendChild(progressScript);
 })();
