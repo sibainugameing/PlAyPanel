@@ -25,7 +25,7 @@ const artworkRetryIntervalMs = Math.max(250, Number(config.artworkRetryIntervalM
 
 // On a track change, keep requesting artwork for a short window before displaying it.
 // This avoids committing an image from the brief period where metadata is still changing.
-const artworkCollectionIntervalMs = 500;
+const artworkCollectionIntervalMs = 200;
 const artworkCollectionDurationMs = 4000;
 
 const clockEnabled = displayConfig.clockEnabled === true;
