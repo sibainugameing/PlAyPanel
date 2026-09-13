@@ -61,6 +61,7 @@
 
       <div class="track-copy">
         <p class="now-playing">NOW PLAYING</p>
+        <p id="progress-time" class="progress-time" aria-label="再生時間">0:00 / --:--</p>
         <h1 id="title">---</h1>
         <p id="artist" class="artist">---</p>
         <p id="album" class="album">---</p>
@@ -104,6 +105,5 @@
   </script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
   <script src="{{ url_for('static', filename='background.js') }}"></script>
-  <script src="{{ url_for('static', filename='progress.js') }}"></script>
 </body>
 </html>
