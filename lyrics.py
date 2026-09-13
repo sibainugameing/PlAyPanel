@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from urllib.error import HTTPError
@@ -14,7 +15,7 @@ from urllib.request import Request, urlopen
 
 LRCLIB_GET_URL = "https://lrclib.net/api/get"
 LRCLIB_SEARCH_URL = "https://lrclib.net/api/search"
-CACHE_VERSION = "v5"
+CACHE_VERSION = "v6"
 
 
 class LyricsService:
@@ -25,6 +26,8 @@ class LyricsService:
         self.timeout_seconds = timeout_seconds
         self.max_entries = max(1, max_entries)
         self._init_db()
+        self._inflight_lock = threading.Lock()
+        self._inflight: dict[str, threading.Event] = {}
 
     @staticmethod
     def _normalize(value: str) -> str:
@@ -103,9 +106,7 @@ class LyricsService:
         artist_score = cls._similarity(artist, candidate_artist)
         album_score = cls._similarity(album, candidate_album) if album and candidate_album else 0.0
 
-        wanted_title_variants = {
-            cls._normalize(value) for value in cls._title_variants(title)
-        }
+        wanted_title_variants = {cls._normalize(value) for value in cls._title_variants(title)}
         normalized_candidate_title = cls._normalize(candidate_title)
         normalized_artist = cls._normalize(artist)
         normalized_candidate_artist = cls._normalize(candidate_artist)
@@ -243,41 +244,22 @@ class LyricsService:
             raise RuntimeError("Invalid LRCLIB track response")
         return payload.get("syncedLyrics"), payload.get("plainLyrics")
 
-    def _fetch_search_candidates(self, title: str, artist: str, album: str) -> list[dict]:
-        variants = self._title_variants(title)
+    def _fetch_search_candidates(self, title: str) -> list[dict]:
         all_candidates: dict[str, dict] = {}
-
-        # Search by track title alone first. This is important when the
-        # streaming service localizes or otherwise changes the artist name.
-        for search_title in variants:
+        for search_title in self._title_variants(title):
             payload = self._request_json(
                 LRCLIB_SEARCH_URL,
                 {"track_name": search_title},
             )
             if not isinstance(payload, list):
                 continue
+
             for item in payload:
                 if not isinstance(item, dict):
                     continue
                 candidate_id = str(item.get("id") or "")
                 key = candidate_id or json.dumps(item, sort_keys=True, ensure_ascii=False)
                 all_candidates[key] = item
-
-        # A general query is useful when track_name search has no result.
-        if not all_candidates:
-            for search_title in variants:
-                payload = self._request_json(
-                    LRCLIB_SEARCH_URL,
-                    {"q": search_title},
-                )
-                if not isinstance(payload, list):
-                    continue
-                for item in payload:
-                    if not isinstance(item, dict):
-                        continue
-                    candidate_id = str(item.get("id") or "")
-                    key = candidate_id or json.dumps(item, sort_keys=True, ensure_ascii=False)
-                    all_candidates[key] = item
 
         return list(all_candidates.values())
 
@@ -287,7 +269,7 @@ class LyricsService:
         artist: str,
         album: str,
     ) -> tuple[str | None, str | None] | None:
-        candidates = self._fetch_search_candidates(title, artist, album)
+        candidates = self._fetch_search_candidates(title)
         if not candidates:
             return None
 
@@ -327,7 +309,6 @@ class LyricsService:
         artist: str,
         album: str,
     ) -> tuple[str | None, str | None]:
-        # 1. Try full metadata.
         try:
             synced, plain = self._fetch_exact(title, artist, album)
             if synced or plain:
@@ -336,7 +317,6 @@ class LyricsService:
             if error.code != 404:
                 raise
 
-        # 2. Ignore album mismatch completely.
         try:
             synced, plain = self._fetch_exact(title, artist)
             if synced or plain:
@@ -345,11 +325,28 @@ class LyricsService:
             if error.code != 404:
                 raise
 
-        # 3. Search by title only, including simplified title variants.
         fallback = self._fetch_search_candidate(title, artist, album)
         if fallback is None:
             return None, None
         return fallback
+
+    def _fetch_and_cache(
+        self,
+        key: str,
+        title: str,
+        artist: str,
+        album: str,
+    ) -> None:
+        try:
+            synced, plain = self._fetch_remote(title, artist, album)
+            self._save(key, title, artist, album, synced, plain)
+        except Exception as error:
+            print(f"Lyrics lookup failed for {title!r}: {error}", flush=True)
+        finally:
+            with self._inflight_lock:
+                event = self._inflight.pop(key, None)
+                if event is not None:
+                    event.set()
 
     def get(self, title: str, artist: str, album: str) -> dict:
         title = (title or "").strip()
@@ -364,19 +361,30 @@ class LyricsService:
         if cached is not None:
             return self._format_result(cached)
 
-        try:
-            synced, plain = self._fetch_remote(title, artist, album)
-        except Exception:
-            return {
-                "found": False,
-                "synced": False,
-                "lines": [],
-                "error": "lookup_failed",
-            }
+        with self._inflight_lock:
+            event = self._inflight.get(key)
+            if event is None:
+                event = threading.Event()
+                self._inflight[key] = event
+                owner = True
+            else:
+                owner = False
 
-        self._save(key, title, artist, album, synced, plain)
+        if owner:
+            self._fetch_and_cache(key, title, artist, album)
+        else:
+            event.wait(timeout=self.timeout_seconds + 2.0)
+
         cached = self._get_cached(key)
-        return self._format_result(cached or {})
+        if cached is not None:
+            return self._format_result(cached)
+
+        return {
+            "found": False,
+            "synced": False,
+            "lines": [],
+            "error": "lookup_failed",
+        }
 
     @staticmethod
     def _parse_lrc(text: str | None) -> list[dict]:
