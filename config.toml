@@ -81,6 +81,20 @@ poll_interval_ms = 1000
 # Retry interval for album artwork that is temporarily missing or unavailable.
 artwork_retry_interval_ms = 3000
 
+[lyrics]
+# LRCLIB lyrics feature.
+enabled = true
+# Cached lyrics are stored here after the first successful lookup.
+cache_dir = "lyrics_cache"
+# Maximum time spent waiting for LRCLIB.
+timeout_seconds = 8.0
+# Number of lyric lines visible around the current line.
+visible_lines = 5
+# Current lyric font size.
+current_line_size = "2.4rem"
+# Surrounding lyric font size.
+side_line_size = "1.15rem"
+
 [display]
 # Small clock at the top of the panel.
 clock_enabled = true
