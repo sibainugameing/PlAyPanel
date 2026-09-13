@@ -1,7 +1,7 @@
 (() => {
   const config = window.PLAYPANEL_CONFIG ?? {};
-  const lyricsConfig = config.lyrics ?? {};
-  if (lyricsConfig.enabled !== true) return;
+  const lyricsConfig = config.lyrics ?? { enabled: true, visibleLines: 5 };
+  if (lyricsConfig.enabled === false) return;
 
   const info = document.querySelector('.info');
   const trackCopy = document.querySelector('.track-copy');
