@@ -3,45 +3,37 @@
   const lyricsConfig = config.lyrics ?? { enabled: true, visibleLines: 5 };
   if (lyricsConfig.enabled === false) return;
 
-  const info = document.querySelector('.info');
+  const panel = document.querySelector('#lyrics-panel');
+  const linesElement = document.querySelector('#lyrics-lines');
+  const statusElement = document.querySelector('#lyrics-status');
   const trackCopy = document.querySelector('.track-copy');
-  if (!info || !trackCopy) return;
 
-  const panel = document.createElement('div');
-  panel.id = 'lyrics-panel';
-  panel.className = 'lyrics-panel';
-  panel.hidden = true;
-  panel.setAttribute('aria-label', 'Lyrics');
-
-  const linesElement = document.createElement('div');
-  linesElement.id = 'lyrics-lines';
-  linesElement.className = 'lyrics-lines';
-
-  const statusElement = document.createElement('p');
-  statusElement.id = 'lyrics-status';
-  statusElement.className = 'lyrics-status';
-
-  panel.append(linesElement, statusElement);
-  trackCopy.after(panel);
+  if (!panel || !linesElement || !statusElement || !trackCopy) return;
+  if (document.querySelector('.lyrics-toggle')) return;
 
   const visibleLines = Math.max(3, Number(lyricsConfig.visibleLines) || 5);
+
   let trackKey = null;
   let lyricLines = [];
   let currentIndex = -1;
-  let playing = false;
-  let startedAt = 0;
-  let pausedAt = 0;
-  let updateTimer = null;
-  let fetchController = null;
   let lyricsAvailable = false;
   let lyricsMode = false;
+  let playing = false;
+
+  // Shairport Sync audio position is authoritative.
+  // Between metadata polls we interpolate only for visual smoothness.
+  let audioPositionMs = 0;
+  let audioAnchorPerformanceMs = performance.now();
+
+  let fetchController = null;
+  let syncTimer = null;
 
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'lyrics-toggle';
   toggle.textContent = 'LYRICS';
   toggle.hidden = true;
-  toggle.setAttribute('aria-label', 'Toggle lyrics view');
+  toggle.setAttribute('aria-label', '歌詞表示を切り替え');
   toggle.setAttribute('aria-pressed', 'false');
   panel.after(toggle);
 
@@ -50,63 +42,99 @@
   }
 
   function setMode(enabled) {
-    lyricsMode = enabled && lyricsAvailable;
+    lyricsMode = Boolean(enabled && lyricsAvailable);
     document.body.classList.toggle('lyrics-mode', lyricsMode);
     panel.hidden = !lyricsMode;
     toggle.textContent = lyricsMode ? 'TRACK' : 'LYRICS';
     toggle.setAttribute('aria-pressed', String(lyricsMode));
   }
 
-  function renderLines() {
-    linesElement.replaceChildren();
-    if (!lyricLines.length) return;
-
-    let start = Math.max(0, currentIndex - Math.floor(visibleLines / 2));
-    if (currentIndex < 0) start = 0;
-    const end = Math.min(lyricLines.length, start + visibleLines);
-
-    for (let index = start; index < end; index += 1) {
-      const line = lyricLines[index];
-      const element = document.createElement('p');
-      element.className = 'lyrics-line';
-      element.textContent = line.text || '♪';
-      if (index === currentIndex) element.classList.add('is-current');
-      else if (currentIndex >= 0 && Math.abs(index - currentIndex) === 1) element.classList.add('is-near');
-      linesElement.appendChild(element);
-    }
+  function getAudioPositionMs() {
+    if (!playing) return Math.max(0, audioPositionMs);
+    return Math.max(
+      0,
+      audioPositionMs + Math.max(0, performance.now() - audioAnchorPerformanceMs),
+    );
   }
 
   function findCurrentIndex(positionMs) {
     let index = -1;
     for (let i = 0; i < lyricLines.length; i += 1) {
-      if (lyricLines[i].time_ms <= positionMs) index = i;
+      if (Number(lyricLines[i].time_ms) <= positionMs) index = i;
       else break;
     }
     return index;
   }
 
-  function getPositionMs() {
-    if (!playing) return pausedAt;
-    return Math.max(0, performance.now() - startedAt);
+  function updateLineProgress() {
+    if (currentIndex < 0 || currentIndex >= lyricLines.length) {
+      panel.style.setProperty('--lyrics-line-progress', '0');
+      return;
+    }
+
+    const currentTime = Math.max(0, Number(lyricLines[currentIndex]?.time_ms) || 0);
+    const nextTime = Number(lyricLines[currentIndex + 1]?.time_ms);
+    const position = getAudioPositionMs();
+    const duration = Number.isFinite(nextTime) ? Math.max(1, nextTime - currentTime) : 0;
+    const progress = duration > 0
+      ? Math.min(1, Math.max(0, (position - currentTime) / duration))
+      : 0;
+
+    panel.style.setProperty('--lyrics-line-progress', String(progress));
+
+    const current = linesElement.querySelector('.lyrics-line.is-current');
+    if (current) current.style.setProperty('--line-progress', String(progress));
   }
 
-  function updateSync() {
+  function renderLines() {
+    linesElement.replaceChildren();
     if (!lyricLines.length) return;
-    const positionMs = getPositionMs();
-    const nextIndex = findCurrentIndex(positionMs);
-    if (nextIndex !== currentIndex) {
+
+    const half = Math.floor(visibleLines / 2);
+    let start = Math.max(0, currentIndex - half);
+    const maxStart = Math.max(0, lyricLines.length - visibleLines);
+    start = Math.min(start, maxStart);
+    const end = Math.min(lyricLines.length, start + visibleLines);
+
+    for (let index = start; index < end; index += 1) {
+      const line = lyricLines[index];
+      const element = document.createElement('p');
+      const distance = currentIndex >= 0 ? Math.abs(index - currentIndex) : 99;
+
+      element.className = 'lyrics-line';
+      element.dataset.index = String(index);
+      element.textContent = line.text || '♪';
+
+      if (index === currentIndex) element.classList.add('is-current');
+      else if (distance === 1) element.classList.add('is-near');
+      else if (distance === 2) element.classList.add('is-far');
+
+      linesElement.appendChild(element);
+    }
+
+    updateLineProgress();
+  }
+
+  function updateSync(forceRender = false) {
+    if (!lyricLines.length) return;
+
+    const nextIndex = findCurrentIndex(getAudioPositionMs());
+    if (forceRender || nextIndex !== currentIndex) {
       currentIndex = nextIndex;
       renderLines();
+    } else {
+      updateLineProgress();
     }
   }
 
-  function startTimer() {
-    if (updateTimer !== null) return;
-    updateTimer = window.setInterval(updateSync, 100);
+  function startSyncTimer() {
+    if (syncTimer !== null) return;
+    syncTimer = window.setInterval(() => updateSync(false), 50);
   }
 
   async function loadLyrics(key) {
     if (fetchController) fetchController.abort();
+
     fetchController = new AbortController();
     const controller = fetchController;
 
@@ -118,7 +146,8 @@
     toggle.hidden = true;
     document.body.classList.remove('lyrics-mode');
     lyricsMode = false;
-    setStatus('Searching lyrics');
+    panel.style.setProperty('--lyrics-line-progress', '0');
+    setStatus('歌詞を検索中');
 
     try {
       const response = await fetch('/lyrics.json', {
@@ -126,27 +155,35 @@
         signal: controller.signal,
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
       const result = await response.json();
       if (trackKey !== key) return;
 
-      lyricLines = Array.isArray(result.lines) ? result.lines : [];
+      lyricLines = Array.isArray(result.lines)
+        ? result.lines
+            .filter((line) => Number.isFinite(Number(line?.time_ms)))
+            .map((line) => ({
+              time_ms: Number(line.time_ms),
+              text: String(line.text ?? ''),
+            }))
+            .sort((a, b) => a.time_ms - b.time_ms)
+        : [];
+
       lyricsAvailable = result.synced === true && lyricLines.length > 0;
 
       if (!lyricsAvailable) {
-        setStatus(result.found ? 'No synchronized lyrics' : 'Lyrics unavailable');
+        setStatus(result.found ? '同期歌詞なし' : '歌詞が見つかりません');
         return;
       }
 
-      startedAt = performance.now();
-      pausedAt = 0;
-      currentIndex = findCurrentIndex(0);
+      currentIndex = findCurrentIndex(getAudioPositionMs());
       renderLines();
       toggle.hidden = false;
-      setStatus('0:00');
+      setStatus('音声同期');
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (trackKey !== key) return;
-      setStatus('Lyrics lookup failed');
+      setStatus('歌詞取得に失敗しました');
     }
   }
 
@@ -155,24 +192,34 @@
     const artist = data.artist || '';
     const album = data.album || '';
     const key = `${artist}\u001f${title}\u001f${album}`;
-    const nextPlaying = data.playing === true;
+
+    const reportedPositionMs = Number(data.progress?.elapsed_seconds);
+    const hasAudioPosition = data.progress?.available === true && Number.isFinite(reportedPositionMs);
+
+    // Always re-anchor to the audio-side clock when available.
+    if (hasAudioPosition) {
+      audioPositionMs = Math.max(0, reportedPositionMs * 1000);
+      audioAnchorPerformanceMs = performance.now();
+    } else {
+      audioPositionMs = 0;
+      audioAnchorPerformanceMs = performance.now();
+    }
+
+    playing = data.playing === true && hasAudioPosition;
 
     if (key !== trackKey) {
       trackKey = key;
-      playing = nextPlaying;
-      startedAt = performance.now();
-      pausedAt = 0;
       if (title && artist) loadLyrics(key);
       return;
     }
 
-    if (playing !== nextPlaying) {
-      if (nextPlaying) startedAt = performance.now() - pausedAt;
-      else pausedAt = Math.max(0, performance.now() - startedAt);
-      playing = nextPlaying;
+    if (!hasAudioPosition) {
+      setStatus(lyricsAvailable ? '音声時間待機中' : '歌詞を検索中');
+    } else if (lyricsAvailable) {
+      setStatus('音声同期');
     }
 
-    updateSync();
+    updateSync(false);
   }
 
   async function poll() {
@@ -193,7 +240,7 @@
     setMode(!lyricsMode);
   });
 
-  startTimer();
+  startSyncTimer();
   poll();
   window.setInterval(poll, 250);
 })();
