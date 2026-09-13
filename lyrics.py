@@ -15,7 +15,7 @@ from urllib.request import Request, urlopen
 
 LRCLIB_GET_URL = "https://lrclib.net/api/get"
 LRCLIB_SEARCH_URL = "https://lrclib.net/api/search"
-CACHE_VERSION = "v6"
+CACHE_VERSION = "v7"
 
 
 class LyricsService:
@@ -273,11 +273,6 @@ class LyricsService:
         if not candidates:
             return None
 
-        candidates.sort(
-            key=lambda item: self._candidate_score(title, artist, album, item),
-            reverse=True,
-        )
-
         scored = [
             (self._candidate_score(title, artist, album, item), item)
             for item in candidates
@@ -285,7 +280,12 @@ class LyricsService:
         scored = [item for item in scored if item[0][1] >= 0.72]
         scored.sort(key=lambda item: item[0], reverse=True)
 
-        for (_has_synced, _score), candidate in scored:
+        # Prefer candidates already carrying synchronized lyrics.
+        # Among otherwise comparable matches, preserve the score ordering.
+        synced_scored = [item for item in scored if item[0][0] == 1]
+        plain_scored = [item for item in scored if item[0][0] == 0]
+
+        for (_score, candidate) in synced_scored + plain_scored:
             synced = candidate.get("syncedLyrics")
             plain = candidate.get("plainLyrics")
             track_id = candidate.get("id")
@@ -298,8 +298,21 @@ class LyricsService:
                 except Exception:
                     pass
 
-            if synced or plain:
+            if synced:
                 return synced, plain
+
+        # Fall back to plain lyrics only when no synchronized result exists.
+        for (_score, candidate) in plain_scored:
+            plain = candidate.get("plainLyrics")
+            track_id = candidate.get("id")
+            if track_id is not None:
+                try:
+                    _synced, resolved_plain = self._fetch_by_id(track_id)
+                    plain = resolved_plain or plain
+                except Exception:
+                    pass
+            if plain:
+                return None, plain
 
         return None
 
@@ -309,26 +322,28 @@ class LyricsService:
         artist: str,
         album: str,
     ) -> tuple[str | None, str | None]:
-        try:
-            synced, plain = self._fetch_exact(title, artist, album)
-            if synced or plain:
-                return synced, plain
-        except HTTPError as error:
-            if error.code != 404:
-                raise
+        fallback_plain: str | None = None
 
-        try:
-            synced, plain = self._fetch_exact(title, artist)
-            if synced or plain:
-                return synced, plain
-        except HTTPError as error:
-            if error.code != 404:
-                raise
+        for exact_album in (album, ""):
+            try:
+                synced, plain = self._fetch_exact(title, artist, exact_album)
+                if synced:
+                    return synced, plain
+                if plain and fallback_plain is None:
+                    fallback_plain = plain
+            except HTTPError as error:
+                if error.code != 404:
+                    raise
 
         fallback = self._fetch_search_candidate(title, artist, album)
-        if fallback is None:
-            return None, None
-        return fallback
+        if fallback is not None:
+            synced, plain = fallback
+            if synced:
+                return synced, plain
+            if plain:
+                return None, plain
+
+        return None, fallback_plain
 
     def _fetch_and_cache(
         self,
