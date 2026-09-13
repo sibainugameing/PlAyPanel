@@ -2,6 +2,9 @@
   const stage = document.querySelector('.record-stage');
   if (!stage) return;
 
+  // Prevent duplicate progress rings if this script is ever loaded more than once.
+  if (stage.querySelector('.record-progress')) return;
+
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('record-progress');
   svg.setAttribute('viewBox', '0 0 100 100');
@@ -18,13 +21,13 @@
   progress.setAttribute('cx', '50');
   progress.setAttribute('cy', '50');
   progress.setAttribute('r', '48');
+  progress.setAttribute('pathLength', '1');
 
   svg.append(base, progress);
   stage.appendChild(svg);
 
-  const circumference = 2 * Math.PI * 48;
-  progress.style.strokeDasharray = `${circumference} ${circumference}`;
-  progress.style.strokeDashoffset = `${circumference}`;
+  progress.style.strokeDasharray = '1 1';
+  progress.style.strokeDashoffset = '1';
 
   const style = document.createElement('style');
   style.textContent = `
@@ -79,12 +82,12 @@
     const playback = data.progress;
     if (!playback || playback.available !== true || !Number.isFinite(playback.ratio)) {
       svg.classList.remove('is-available', 'is-playing', 'is-complete');
-      progress.style.strokeDashoffset = `${circumference}`;
+      progress.style.strokeDashoffset = '1';
       return;
     }
 
     const ratio = Math.min(1, Math.max(0, Number(playback.ratio)));
-    progress.style.strokeDashoffset = `${circumference * (1 - ratio)}`;
+    progress.style.strokeDashoffset = String(1 - ratio);
 
     svg.classList.add('is-available');
     svg.classList.toggle('is-playing', data.playing === true);
