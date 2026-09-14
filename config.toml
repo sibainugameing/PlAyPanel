@@ -65,7 +65,8 @@ sync_offset_seconds = 0.0
 
 # Current lyric shown at the bottom of the album/track screen.
 bottom_enabled = true
-bottom_font_size = "clamp(.88rem, 1.35vw, 1.06rem)"
+# Default bottom lyric size (slightly larger for readability).
+bottom_font_size = "clamp(1rem, 1.55vw, 1.22rem)"
 bottom_max_width = "920px"
 bottom_opacity = 0.92
 bottom_animation_enabled = true
