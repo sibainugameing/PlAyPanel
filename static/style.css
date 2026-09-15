@@ -102,7 +102,8 @@ body.screen-blanked .screen-blank {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  overflow: visible;
+  border-radius: 50%;
   perspective: 1000px;
 }
 
@@ -119,6 +120,7 @@ body.screen-blanked .screen-blank {
   opacity: 0;
   transform: scale(0.72);
   transition: opacity 800ms ease, transform 1200ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
 }
 
 .record-stage.has-artwork-glow::before {
@@ -135,6 +137,7 @@ body.screen-blanked .screen-blank {
   opacity: 0.75;
   transform: translateY(28px) scale(0.92);
   transition: transform 760ms cubic-bezier(0.22, 1, 0.36, 1), opacity 760ms ease;
+  will-change: transform, opacity;
 }
 
 body.is-playing .record-shadow {
@@ -150,6 +153,9 @@ body.is-playing .record-shadow {
   border-radius: 50%;
   isolation: isolate;
   overflow: hidden;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  transform-origin: center;
   background:
     radial-gradient(circle at 48% 44%, rgba(255, 255, 255, 0.1), transparent 28%),
     repeating-radial-gradient(circle at center, #232323 0 1px, #101010 1.7px 4px);
@@ -157,9 +163,7 @@ body.is-playing .record-shadow {
     inset 0 0 0 1px rgba(255, 255, 255, 0.08),
     inset 0 0 50px rgba(0, 0, 0, 0.58),
     0 30px 80px rgba(0, 0, 0, 0.55);
-  will-change: transform, opacity, filter;
-  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-  transform-origin: center;
+  will-change: transform, opacity;
 }
 
 .record::before {
@@ -383,12 +387,10 @@ h1.title--extreme {
   0% {
     transform: translate3d(var(--record-change-distance, 120%), 0, 0) rotate(var(--record-change-rotation, 22deg)) scale(0.88);
     opacity: 0;
-    filter: blur(5px);
   }
   55% {
     transform: translate3d(-3%, 0, 0) rotate(-3deg) scale(1.025);
     opacity: 1;
-    filter: blur(0);
   }
   78% {
     transform: translate3d(1.2%, 0, 0) rotate(1deg) scale(0.995);
@@ -396,7 +398,6 @@ h1.title--extreme {
   100% {
     transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
     opacity: 1;
-    filter: blur(0);
   }
 }
 
@@ -404,7 +405,6 @@ h1.title--extreme {
   0% {
     transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
     opacity: 1;
-    filter: blur(0);
   }
   45% {
     transform: translate3d(-8%, 0, 0) rotate(-4deg) scale(0.99);
@@ -413,7 +413,6 @@ h1.title--extreme {
   100% {
     transform: translate3d(calc(-1 * var(--record-change-distance, 120%)), 0, 0) rotate(calc(-1 * var(--record-change-rotation, 22deg))) scale(0.9);
     opacity: 0;
-    filter: blur(5px);
   }
 }
 
@@ -455,17 +454,19 @@ h1.title--extreme {
 @keyframes info-detail-change {
   from {
     opacity: 0;
-    transform: translate3d(14px, 0, 0);
+    transform: translate3d(16px, 0, 0);
+    filter: blur(3px);
   }
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0);
+    filter: blur(0);
   }
 }
 
 @keyframes info-line-change {
   from {
-    transform: scaleX(0.35);
+    transform: scaleX(0);
     opacity: 0;
   }
   to {
@@ -478,112 +479,65 @@ h1.title--extreme {
   0%,
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.06), 0 0 0 0 rgba(255, 255, 255, 0.12);
   }
   50% {
-    transform: scale(1.16);
-    box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.025);
+    transform: scale(1.08);
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.06), 0 0 7px rgba(255, 255, 255, 0);
   }
 }
 
-.animations-disabled .record,
-.animations-disabled .status-dot,
-.animations-disabled .record-stage::before,
-.animations-disabled .record-shadow,
-.animations-disabled .info,
-.animations-disabled .info-line,
-.animations-disabled .now-playing,
-.animations-disabled h1,
-.animations-disabled .artist,
-.animations-disabled .album {
+body.animations-disabled * {
   animation: none !important;
-  transition: none !important;
-}
-
-.animations-disabled::after {
-  opacity: 0 !important;
-  transition: none !important;
-}
-
-.animations-disabled .record-stage::before {
-  opacity: 0 !important;
-  transform: scale(0.72) !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+  transition-duration: 0s !important;
 }
 
 @media (max-width: 900px) {
   body {
     overflow: auto;
-    min-height: 100dvh;
-    padding: 28px 0;
+    place-items: start center;
+    padding: 72px 0 96px;
   }
 
   .panel {
+    width: min(760px, 92vw);
     grid-template-columns: 1fr;
-    gap: 34px;
-    width: min(680px, 88vw);
+    gap: 42px;
   }
 
   .record-stage {
-    width: min(76vw, 560px);
+    width: min(78vw, 560px);
   }
 
   .info {
-    text-align: center;
-    padding-bottom: 12px;
+    padding: 0;
   }
 
   .eyebrow {
-    margin-bottom: 22px;
-  }
-
-  .track-copy {
-    margin-inline: auto;
+    margin-bottom: 24px;
   }
 
   .info-line {
-    margin-inline: auto;
+    margin-top: 32px;
   }
 }
 
 @media (max-width: 600px) {
+  body {
+    padding-top: 62px;
+  }
+
   .panel {
-    width: min(92vw, 520px);
+    width: min(94vw, 520px);
+    gap: 30px;
   }
 
   .record-stage {
-    width: 84vw;
-  }
-
-  h1 {
-    font-size: clamp(2.15rem, 11vw, 3.6rem);
-  }
-
-  h1.title--long {
-    font-size: clamp(2rem, 9.6vw, 3.2rem);
-  }
-
-  h1.title--very-long {
-    font-size: clamp(1.75rem, 8.4vw, 2.8rem);
-  }
-
-  h1.title--extreme {
-    font-size: clamp(1.5rem, 7.2vw, 2.4rem);
+    width: min(88vw, 500px);
   }
 
   .artist {
     margin-top: 18px;
-    font-size: clamp(1.18rem, 5.5vw, 1.65rem);
   }
 
   .info-line {
