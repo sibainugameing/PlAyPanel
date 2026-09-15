@@ -6,6 +6,7 @@ let artworkRetryTimer = null;
 let artworkCollectionTimer = null;
 let artworkCollectionEndTimer = null;
 let recordReturnTimer = null;
+let trackAnimationTimer = null;
 let clockTimer = null;
 let blankTimer = null;
 let updateInProgress = false;
@@ -144,9 +145,8 @@ function clearRecordReturn(record) {
 function applyRecordRotation(record, playing) {
   if (!record) return;
 
-  // The entrance animation owns the record transform until it finishes.
-  // Re-applying the spin during that animation can cause transform jumps.
-  if (record.classList.contains('record--enter')) return;
+  // Track-change animations own the transform. Polling must not interrupt them.
+  if (record.classList.contains('record--enter') || record.classList.contains('record--exit')) return;
 
   const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
 
@@ -198,7 +198,7 @@ function setArtworkGlow(src) {
   if (!recordStage) return;
 
   if (src) {
-    recordStage.style.setProperty('--artwork-image', `url("${src}")`);
+    recordStage.style.setProperty('--artwork-image', `url(\"${src}\")`);
     recordStage.classList.add('has-artwork-glow');
   } else {
     recordStage.style.removeProperty('--artwork-image');
@@ -206,12 +206,38 @@ function setArtworkGlow(src) {
   }
 }
 
-function animateTrackChange(playing) {
+function clearTrackAnimationTimer() {
+  if (trackAnimationTimer !== null) {
+    window.clearTimeout(trackAnimationTimer);
+    trackAnimationTimer = null;
+  }
+}
+
+function runTrackChangeAnimation(playing) {
   const record = document.querySelector('.record');
   const info = document.querySelector('.info');
+  if (!record) return;
 
-  if (animationsEnabled && record && recordChangeEnabled) {
-    record.classList.remove('record--spinning', 'record--enter');
+  clearTrackAnimationTimer();
+
+  if (!animationsEnabled || !recordChangeEnabled) {
+    record.classList.remove('record--enter', 'record--exit', 'record--spinning');
+    applyRecordRotation(record, playing);
+    return;
+  }
+
+  record.classList.remove('record--spinning', 'record--enter', 'record--exit');
+  void record.offsetWidth;
+  record.classList.add('record--exit');
+
+  const exitDuration = Math.max(0, Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--record-change-duration')
+  ) || 760);
+
+  trackAnimationTimer = window.setTimeout(() => {
+    trackAnimationTimer = null;
+
+    record.classList.remove('record--exit');
     void record.offsetWidth;
     record.classList.add('record--enter');
 
@@ -223,9 +249,7 @@ function animateTrackChange(playing) {
     };
 
     record.addEventListener('animationend', handleEntranceEnd);
-  } else if (record) {
-    applyRecordRotation(record, playing);
-  }
+  }, Math.round(exitDuration * 0.82));
 
   if (animationsEnabled && info && infoChangeEnabled) {
     info.classList.remove('info--change');
@@ -250,7 +274,7 @@ function swapArtwork(artwork, artworkUrl, playing) {
   artwork.hidden = false;
   currentArtworkUrl = artworkUrl;
   setArtworkGlow(artworkUrl);
-  animateTrackChange(playing);
+  runTrackChangeAnimation(playing);
 }
 
 function clearArtworkCollectionTimers() {
