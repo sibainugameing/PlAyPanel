@@ -144,11 +144,17 @@ function clearRecordReturn(record) {
 function applyRecordRotation(record, playing) {
   if (!record) return;
 
+  // The entrance animation owns the record transform until it finishes.
+  // Re-applying the spin during that animation can cause transform jumps.
+  if (record.classList.contains('record--enter')) return;
+
   const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
 
   if (shouldSpin) {
-    clearRecordReturn(record);
-    record.classList.add('record--spinning');
+    if (!record.classList.contains('record--spinning')) {
+      clearRecordReturn(record);
+      record.classList.add('record--spinning');
+    }
     return;
   }
 
@@ -205,7 +211,7 @@ function animateTrackChange(playing) {
   const info = document.querySelector('.info');
 
   if (animationsEnabled && record && recordChangeEnabled) {
-    record.classList.remove('record--enter');
+    record.classList.remove('record--spinning', 'record--enter');
     void record.offsetWidth;
     record.classList.add('record--enter');
 
