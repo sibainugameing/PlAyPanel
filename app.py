@@ -5,9 +5,9 @@ from io import BytesIO
 from flask import Flask, jsonify, render_template, request, send_file
 
 from config import load_config
-from lyrics import LyricsService
-from metadata import DEFAULT_PIPE, detect_image_type
-from metadata_service import MetadataService
+from core.metadata import DEFAULT_PIPE, detect_image_type
+from core.metadata_service import MetadataService
+from lyrics.service import LyricsService
 
 
 config = load_config()
