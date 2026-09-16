@@ -6,9 +6,9 @@
   <meta name="theme-color" content="{{ config.background_color }}">
   <title>PlayPanel</title>
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='backgrounds.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='lyrics.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/backgrounds.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/lyrics.css') }}">
   <style>
     .record-stage {
       overflow: visible;
@@ -182,9 +182,9 @@
       },
     };
   </script>
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
-  <script src="{{ url_for('static', filename='background.js') }}"></script>
-  <script src="{{ url_for('static', filename='lyrics.js') }}"></script>
-  <script src="{{ url_for('static', filename='progress.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/background.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/lyrics.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/progress.js') }}"></script>
 </body>
 </html>
