@@ -1,9 +1,12 @@
 (() => {
-  const artwork = document.querySelector('#artwork');
-  if (!artwork) return;
+  const stage = document.querySelector('.record-stage');
+  if (!stage) return;
 
   const syncArtworkBackground = () => {
-    const imageUrl = artwork.hidden ? '' : artwork.currentSrc || artwork.src;
+    const activeArtwork = stage.querySelector('.record-layer--active .artwork');
+    const imageUrl = activeArtwork && !activeArtwork.hidden
+      ? activeArtwork.currentSrc || activeArtwork.src
+      : '';
 
     if (imageUrl) {
       document.body.style.setProperty(
@@ -15,11 +18,18 @@
     }
   };
 
-  artwork.addEventListener('load', syncArtworkBackground);
+  stage.addEventListener('animationend', (event) => {
+    if (event.animationName === 'record-layer-enter' || event.animationName === 'record-layer-exit') {
+      syncArtworkBackground();
+    }
+  });
 
-  new MutationObserver(syncArtworkBackground).observe(artwork, {
+  stage.addEventListener('load', syncArtworkBackground, true);
+
+  new MutationObserver(syncArtworkBackground).observe(stage, {
+    subtree: true,
     attributes: true,
-    attributeFilter: ['src', 'hidden'],
+    attributeFilter: ['src', 'hidden', 'class'],
   });
 
   syncArtworkBackground();
