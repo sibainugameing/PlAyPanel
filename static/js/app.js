@@ -6,10 +6,11 @@ let artworkRetryTimer = null;
 let artworkCollectionTimer = null;
 let artworkCollectionEndTimer = null;
 let recordReturnTimer = null;
-let trackAnimationTimer = null;
+let trackAnimationGeneration = 0;
 let clockTimer = null;
 let blankTimer = null;
 let updateInProgress = false;
+let activeLayerIndex = 0;
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -24,8 +25,6 @@ const infoChangeEnabled = animationConfig.infoChangeEnabled !== false;
 const pollIntervalMs = Math.max(250, Number(config.pollIntervalMs) || 1000);
 const artworkRetryIntervalMs = Math.max(250, Number(config.artworkRetryIntervalMs) || 3000);
 
-// On a track change, keep requesting artwork for a short window before displaying it.
-// This avoids committing an image from the brief period where metadata is still changing.
 const artworkCollectionIntervalMs = 200;
 const artworkCollectionDurationMs = 4000;
 
@@ -42,6 +41,25 @@ document.documentElement.style.setProperty(
   '--record-rotation-duration',
   `${recordRotationDurationSeconds}s`
 );
+
+function getRecordLayers() {
+  return Array.from(document.querySelectorAll('.record-layer'));
+}
+
+function getActiveLayer() {
+  const layers = getRecordLayers();
+  return layers[activeLayerIndex] ?? layers[0] ?? null;
+}
+
+function getInactiveLayer() {
+  const layers = getRecordLayers();
+  if (layers.length < 2) return null;
+  return layers[activeLayerIndex === 0 ? 1 : 0];
+}
+
+function getLayerArtwork(layer) {
+  return layer?.querySelector('.artwork') ?? null;
+}
 
 function updateClock() {
   const clock = document.querySelector('#clock');
@@ -108,7 +126,8 @@ function applyPlaybackState(playing) {
   const isPlaying = playing === true;
   document.body.classList.toggle('is-playing', isPlaying);
 
-  const record = document.querySelector('.record');
+  const activeLayer = getActiveLayer();
+  const record = activeLayer ? activeLayer.querySelector('.record') : null;
   if (record) {
     applyRecordRotation(record, playing);
   }
@@ -132,6 +151,8 @@ function getRecordRotationDegrees(record) {
 }
 
 function clearRecordReturn(record) {
+  if (!record) return;
+
   if (recordReturnTimer !== null) {
     window.clearTimeout(recordReturnTimer);
     recordReturnTimer = null;
@@ -144,9 +165,6 @@ function clearRecordReturn(record) {
 
 function applyRecordRotation(record, playing) {
   if (!record) return;
-
-  // Track-change animations own the transform. Polling must not interrupt them.
-  if (record.classList.contains('record--enter') || record.classList.contains('record--exit')) return;
 
   const shouldSpin = animationsEnabled && recordRotationEnabled && playing === true;
 
@@ -198,83 +216,12 @@ function setArtworkGlow(src) {
   if (!recordStage) return;
 
   if (src) {
-    recordStage.style.setProperty('--artwork-image', `url(\"${src}\")`);
+    recordStage.style.setProperty('--artwork-image', `url("${src}")`);
     recordStage.classList.add('has-artwork-glow');
   } else {
     recordStage.style.removeProperty('--artwork-image');
     recordStage.classList.remove('has-artwork-glow');
   }
-}
-
-function clearTrackAnimationTimer() {
-  if (trackAnimationTimer !== null) {
-    window.clearTimeout(trackAnimationTimer);
-    trackAnimationTimer = null;
-  }
-}
-
-function runTrackChangeAnimation(playing) {
-  const record = document.querySelector('.record');
-  const info = document.querySelector('.info');
-  if (!record) return;
-
-  clearTrackAnimationTimer();
-
-  if (!animationsEnabled || !recordChangeEnabled) {
-    record.classList.remove('record--enter', 'record--exit', 'record--spinning');
-    applyRecordRotation(record, playing);
-    return;
-  }
-
-  record.classList.remove('record--spinning', 'record--enter', 'record--exit');
-  void record.offsetWidth;
-  record.classList.add('record--exit');
-
-  const exitDuration = Math.max(0, Number.parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue('--record-change-duration')
-  ) || 760);
-
-  trackAnimationTimer = window.setTimeout(() => {
-    trackAnimationTimer = null;
-
-    record.classList.remove('record--exit');
-    void record.offsetWidth;
-    record.classList.add('record--enter');
-
-    const handleEntranceEnd = (event) => {
-      if (event.animationName !== 'record-enter') return;
-      record.removeEventListener('animationend', handleEntranceEnd);
-      record.classList.remove('record--enter');
-      applyRecordRotation(record, playing);
-    };
-
-    record.addEventListener('animationend', handleEntranceEnd);
-  }, Math.round(exitDuration * 0.82));
-
-  if (animationsEnabled && info && infoChangeEnabled) {
-    info.classList.remove('info--change');
-    void info.offsetWidth;
-    info.classList.add('info--change');
-
-    const infoDuration = parseFloat(
-      getComputedStyle(document.documentElement).getPropertyValue('--info-change-duration')
-    ) || 420;
-
-    window.setTimeout(() => {
-      info.classList.remove('info--change');
-    }, infoDuration + 30);
-  }
-}
-
-function swapArtwork(artwork, artworkUrl, playing) {
-  // The collection window has completed. Commit the last successful HTTP image.
-  artwork.onload = null;
-  artwork.onerror = null;
-  artwork.src = artworkUrl;
-  artwork.hidden = false;
-  currentArtworkUrl = artworkUrl;
-  setArtworkGlow(artworkUrl);
-  runTrackChangeAnimation(playing);
 }
 
 function clearArtworkCollectionTimers() {
@@ -289,7 +236,103 @@ function clearArtworkCollectionTimers() {
   }
 }
 
-function scheduleArtworkRetry(trackKey, data, artwork, delay = artworkRetryIntervalMs) {
+function normalizeRecordLayers() {
+  const layers = getRecordLayers();
+  if (layers.length < 2) return layers;
+
+  layers.forEach((layer, index) => {
+    layer.classList.remove('record-layer--enter', 'record-layer--exit');
+    layer.classList.toggle('record-layer--active', index === activeLayerIndex);
+
+    if (index !== activeLayerIndex) {
+      const record = layer.querySelector('.record');
+      if (record) {
+        record.classList.remove('record--spinning', 'record--returning');
+        record.style.transition = '';
+        record.style.transform = '';
+      }
+    }
+  });
+
+  return layers;
+}
+
+function runTrackChangeAnimation(targetLayer, playing) {
+  const layers = normalizeRecordLayers();
+  const outgoingLayer = getActiveLayer();
+  const incomingLayer = targetLayer;
+  const info = document.querySelector('.info');
+
+  if (!incomingLayer || !outgoingLayer || incomingLayer === outgoingLayer) {
+    const record = incomingLayer?.querySelector('.record');
+    if (record) applyRecordRotation(record, playing);
+    return;
+  }
+
+  const generation = ++trackAnimationGeneration;
+  const outgoingRecord = outgoingLayer.querySelector('.record');
+  const incomingRecord = incomingLayer.querySelector('.record');
+  clearRecordReturn(outgoingRecord);
+  outgoingRecord?.classList.remove('record--spinning');
+  incomingRecord?.classList.remove('record--spinning', 'record--returning');
+
+  if (!animationsEnabled || !recordChangeEnabled) {
+    outgoingLayer.classList.remove('record-layer--active');
+    incomingLayer.classList.add('record-layer--active');
+    activeLayerIndex = layers.indexOf(incomingLayer);
+    normalizeRecordLayers();
+    applyRecordRotation(incomingRecord, playing);
+  } else {
+    incomingLayer.classList.add('record-layer--enter');
+    outgoingLayer.classList.add('record-layer--exit');
+
+    const handleEntranceEnd = (event) => {
+      if (generation !== trackAnimationGeneration) return;
+      if (event.animationName !== 'record-layer-enter') return;
+
+      incomingLayer.removeEventListener('animationend', handleEntranceEnd);
+      outgoingLayer.classList.remove('record-layer--active', 'record-layer--exit');
+      incomingLayer.classList.remove('record-layer--enter');
+      incomingLayer.classList.add('record-layer--active');
+      activeLayerIndex = layers.indexOf(incomingLayer);
+      normalizeRecordLayers();
+      applyRecordRotation(incomingRecord, playing);
+    };
+
+    incomingLayer.addEventListener('animationend', handleEntranceEnd);
+  }
+
+  if (animationsEnabled && info && infoChangeEnabled) {
+    info.classList.remove('info--change');
+    void info.offsetWidth;
+    info.classList.add('info--change');
+
+    const infoDuration = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue('--info-change-duration')
+    ) || 420;
+
+    window.setTimeout(() => {
+      if (generation === trackAnimationGeneration) {
+        info.classList.remove('info--change');
+      }
+    }, infoDuration + 30);
+  }
+}
+
+function swapArtwork(targetLayer, artworkUrl, playing) {
+  const artwork = getLayerArtwork(targetLayer);
+  if (!artwork) return;
+
+  artwork.onload = null;
+  artwork.onerror = null;
+  artwork.src = artworkUrl;
+  artwork.hidden = false;
+  currentArtworkUrl = artworkUrl;
+  setArtworkGlow(artworkUrl);
+  runTrackChangeAnimation(targetLayer, playing);
+}
+
+function scheduleArtworkRetry(trackKey, data, targetLayer, delay = artworkRetryIntervalMs) {
   if (artworkRetryTimer !== null) {
     window.clearTimeout(artworkRetryTimer);
   }
@@ -298,11 +341,11 @@ function scheduleArtworkRetry(trackKey, data, artwork, delay = artworkRetryInter
     artworkRetryTimer = null;
 
     if (currentTrackKey !== trackKey || artworkLoadedTrackKey === trackKey) return;
-    if (artworkRequestKey === null) requestArtwork(trackKey, data, artwork);
+    if (artworkRequestKey === null) requestArtwork(trackKey, data, targetLayer);
   }, Math.max(100, delay));
 }
 
-function requestArtwork(trackKey, data, artwork) {
+function requestArtwork(trackKey, data, targetLayer) {
   if (!trackKey || currentTrackKey !== trackKey || artworkRequestKey === trackKey) return;
 
   artworkRequestKey = trackKey;
@@ -329,7 +372,6 @@ function requestArtwork(trackKey, data, artwork) {
 
   clearArtworkCollectionTimers();
 
-  // Start immediately, then continue sampling for the whole collection window.
   loadArtwork();
   artworkCollectionTimer = window.setInterval(loadArtwork, artworkCollectionIntervalMs);
 
@@ -355,10 +397,10 @@ function requestArtwork(trackKey, data, artwork) {
         artworkRetryTimer = null;
       }
 
-      swapArtwork(artwork, latestSuccessfulUrl, data.playing);
+      swapArtwork(targetLayer, latestSuccessfulUrl, data.playing);
     } else {
       artworkRequestKey = null;
-      scheduleArtworkRetry(trackKey, data, artwork, 500);
+      scheduleArtworkRetry(trackKey, data, targetLayer, 500);
     }
   }, artworkCollectionDurationMs);
 }
@@ -396,8 +438,7 @@ async function updateNowPlaying() {
     applyPlaybackState(data.playing);
 
     const trackKey = data.track_id || '';
-    const artwork = document.querySelector('#artwork');
-    if (!artwork || !trackKey) return;
+    if (!trackKey) return;
 
     const trackChanged = trackKey !== currentTrackKey;
 
@@ -412,10 +453,10 @@ async function updateNowPlaying() {
       }
       clearArtworkCollectionTimers();
 
-      // Keep the current artwork visible while the new artwork is collected.
-      requestArtwork(trackKey, data, artwork);
+      const targetLayer = getInactiveLayer();
+      requestArtwork(trackKey, data, targetLayer);
     } else if (artworkLoadedTrackKey !== trackKey && artworkRequestKey === null) {
-      requestArtwork(trackKey, data, artwork);
+      requestArtwork(trackKey, data, getInactiveLayer());
     }
   } catch (error) {
     console.warn('PlayPanel: now-playing update failed', error);
@@ -424,6 +465,7 @@ async function updateNowPlaying() {
   }
 }
 
+normalizeRecordLayers();
 setupDisplayFeatures();
 updateNowPlaying();
 window.setInterval(updateNowPlaying, pollIntervalMs);
