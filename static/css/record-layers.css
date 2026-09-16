@@ -1,0 +1,72 @@
+.record-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.record-layer--active {
+  z-index: 2;
+  visibility: visible;
+  opacity: 1;
+}
+
+.record-layer--enter,
+.record-layer--exit {
+  visibility: visible;
+}
+
+.record-layer--enter {
+  z-index: 3;
+  animation: record-layer-enter var(--record-change-duration, 1200ms) var(--animation-easing, cubic-bezier(0.25, 0.85, 0.3, 1)) both;
+}
+
+.record-layer--exit {
+  z-index: 2;
+  animation: record-layer-exit var(--record-change-duration, 1200ms) var(--animation-easing, cubic-bezier(0.25, 0.85, 0.3, 1)) both;
+}
+
+@keyframes record-layer-enter {
+  0% {
+    transform: translate3d(var(--record-change-distance, 105%), 0, 0) rotate(var(--record-change-rotation, 10deg)) scale(0.9);
+    opacity: 0;
+  }
+  55% {
+    transform: translate3d(-3%, 0, 0) rotate(-1.5deg) scale(1.015);
+    opacity: 1;
+  }
+  78% {
+    transform: translate3d(1%, 0, 0) rotate(0.6deg) scale(0.998);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes record-layer-exit {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  45% {
+    transform: translate3d(-7%, 0, 0) rotate(-2.5deg) scale(0.992);
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate3d(calc(-1 * var(--record-change-distance, 105%)), 0, 0) rotate(calc(-1 * var(--record-change-rotation, 10deg))) scale(0.9);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record-layer--enter,
+  .record-layer--exit {
+    animation-duration: 1ms;
+  }
+}
