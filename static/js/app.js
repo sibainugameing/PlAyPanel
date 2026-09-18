@@ -11,6 +11,7 @@ let clockTimer = null;
 let blankTimer = null;
 let updateInProgress = false;
 let activeLayerIndex = 0;
+let viewMode = "now-playing";
 
 const config = window.PLAYPANEL_CONFIG ?? {};
 const animationConfig = config.animation ?? {};
@@ -97,6 +98,48 @@ function wakeScreen() {
   if (!screenBlankEnabled) return;
   document.body.classList.remove('screen-blanked');
   scheduleScreenBlank();
+}
+
+function applyViewMode() {
+  document.body.classList.toggle('clock-mode', viewMode === 'clock');
+  const toggle = document.querySelector('#view-mode-toggle');
+  if (!toggle) return;
+
+  toggle.textContent = viewMode === 'clock' ? '曲表示' : '時計モード';
+  toggle.setAttribute(
+    'aria-label',
+    viewMode === 'clock' ? '曲表示に切り替え' : '時計モードに切り替え'
+  );
+}
+
+function toggleViewMode() {
+  viewMode = viewMode === 'clock' ? 'now-playing' : 'clock';
+
+  try {
+    window.localStorage.setItem('playpanel:view-mode', viewMode);
+  } catch (error) {
+    // Ignore unavailable localStorage (for example, private browsing policies).
+  }
+
+  wakeScreen();
+  applyViewMode();
+}
+
+function setupViewMode() {
+  const toggle = document.querySelector('#view-mode-toggle');
+  if (!toggle) return;
+
+  try {
+    const savedMode = window.localStorage.getItem('playpanel:view-mode');
+    if (savedMode === 'clock' || savedMode === 'now-playing') {
+      viewMode = savedMode;
+    }
+  } catch (error) {
+    // Use the default mode when localStorage is unavailable.
+  }
+
+  toggle.addEventListener('click', toggleViewMode);
+  applyViewMode();
 }
 
 function scheduleScreenBlank() {
@@ -493,5 +536,6 @@ async function updateNowPlaying() {
 
 normalizeRecordLayers();
 setupDisplayFeatures();
+setupViewMode();
 updateNowPlaying();
 window.setInterval(updateNowPlaying, pollIntervalMs);
