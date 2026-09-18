@@ -61,7 +61,7 @@ def test_horizontal_player_and_lyrics_layout_contract() -> None:
     assert 'id="player-progress__value"' in html
     assert 'id="player-client-name"' in html
     assert "setPlayerArtwork(artworkUrl);" in app_js
-    assert "setPlayerClientName(data.client_name, data.connected);" in app_js
+    assert "setPlayerMetadata(data);" in app_js
     assert "player-progress__value" in progress_js
     assert "let lyricsMode = false;" in lyrics_js
     assert "setMode(document.body.classList.contains('clock-mode'));" in lyrics_js
