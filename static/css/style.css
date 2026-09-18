@@ -592,9 +592,7 @@ body.clock-mode .clock {
 }
 
 body.clock-mode .panel {
-  transform: scale(0.84);
-  opacity: 0.48;
-  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1), opacity 500ms ease;
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body.clock-mode .record-stage {
@@ -602,13 +600,13 @@ body.clock-mode .record-stage {
 }
 
 body.clock-mode .info {
-  opacity: 0.68;
+  opacity: 1;
 }
 
 body.clock-mode .lyrics-panel,
 body.clock-mode .now-lyric-bar {
-  opacity: 0.56;
-  transform: scale(0.92);
+  opacity: 1;
+  transform: scale(1);
 }
 
 body.clock-mode .view-mode-toggle {
