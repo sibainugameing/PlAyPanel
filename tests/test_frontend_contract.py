@@ -35,3 +35,15 @@ def test_track_change_wakes_screen_and_resets_blank_timer() -> None:
 def test_lyrics_positive_offset_is_subtracted_from_audio_position() -> None:
     lyrics_js = read_static("static/js/lyrics.js")
     assert "getAudioPositionMs() - (syncOffsetSeconds * 1000)" in lyrics_js
+
+
+def test_view_mode_toggle_is_present_and_persistent() -> None:
+    html = (ROOT / "templates/index.html").read_text(encoding="utf-8")
+    app_js = read_static("static/js/app.js")
+    style_css = read_static("static/css/style.css")
+
+    assert 'id="view-mode-toggle"' in html
+    assert "setupViewMode()" in app_js
+    assert "localStorage.setItem('playpanel:view-mode', viewMode)" in app_js
+    assert "body.clock-mode .clock" in style_css
+    assert "body.clock-mode .panel" in style_css
