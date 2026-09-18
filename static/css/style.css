@@ -57,8 +57,9 @@ body.is-playing::after {
   position: fixed;
   top: 18px;
   left: 50%;
-  z-index: 20;
+  z-index: 200;
   transform: translateX(-50%);
+  pointer-events: none;
   color: rgba(255, 255, 255, 0.42);
   font-size: 0.72rem;
   font-weight: 600;
