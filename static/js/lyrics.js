@@ -15,16 +15,22 @@
 
   const visibleLines = Math.max(3, Number(lyricsConfig.visibleLines) || 5);
 
-  let syncOffsetSeconds = Number(lyricsConfig.sync_offset_seconds) || 0;
-  let bottomEnabled = lyricsConfig.bottom_enabled !== false;
-  let bottomAnimationEnabled = lyricsConfig.bottom_animation_enabled !== false;
-  let configLoaded = false;
+  // Positive offset means "delay the displayed lyric":
+  // subtract the offset from the audio position used for lyric lookup.
+  let syncOffsetSeconds = Number(
+    lyricsConfig.syncOffsetSeconds ?? lyricsConfig.sync_offset_seconds
+  ) || 0;
+  let bottomEnabled = lyricsConfig.bottomEnabled ?? lyricsConfig.bottom_enabled ?? true;
+  let bottomAnimationEnabled =
+    lyricsConfig.bottomAnimationEnabled ?? lyricsConfig.bottom_animation_enabled ?? true;
 
   const applyUiConfig = (settings) => {
     const lyricSettings = settings?.lyrics ?? {};
+
     if (Number.isFinite(Number(lyricSettings.sync_offset_seconds))) {
       syncOffsetSeconds = Number(lyricSettings.sync_offset_seconds);
     }
+
     bottomEnabled = lyricSettings.bottom_enabled !== false;
     bottomAnimationEnabled = lyricSettings.bottom_animation_enabled !== false;
 
@@ -36,18 +42,26 @@
       root.style.setProperty('--lyrics-bottom-max-width', String(lyricSettings.bottom_max_width));
     }
     if (Number.isFinite(Number(lyricSettings.bottom_opacity))) {
-      root.style.setProperty('--lyrics-bottom-opacity', String(Math.min(1, Math.max(0, Number(lyricSettings.bottom_opacity)))));
+      root.style.setProperty(
+        '--lyrics-bottom-opacity',
+        String(Math.min(1, Math.max(0, Number(lyricSettings.bottom_opacity))))
+      );
     }
     if (Number.isFinite(Number(lyricSettings.bottom_animation_duration))) {
-      root.style.setProperty('--lyrics-bottom-animation-duration', `${Math.max(0, Number(lyricSettings.bottom_animation_duration))}ms`);
+      root.style.setProperty(
+        '--lyrics-bottom-animation-duration',
+        `${Math.max(0, Number(lyricSettings.bottom_animation_duration))}ms`
+      );
     }
     if (Number.isFinite(Number(lyricSettings.bottom_animation_distance))) {
-      root.style.setProperty('--lyrics-bottom-animation-distance', `${Number(lyricSettings.bottom_animation_distance)}px`);
+      root.style.setProperty(
+        '--lyrics-bottom-animation-distance',
+        `${Number(lyricSettings.bottom_animation_distance)}px`
+      );
     }
 
     if (!bottomEnabled) hideCurrentLyric();
     else if (lyricsAvailable && !lyricsMode) showCurrentLyric(false);
-    configLoaded = true;
   };
 
   fetch('/ui-config.json', { cache: 'no-store' })
@@ -55,9 +69,7 @@
     .then((settings) => {
       if (settings) applyUiConfig(settings);
     })
-    .catch(() => {
-      configLoaded = true;
-    });
+    .catch(() => {});
 
   let trackKey = null;
   let lyricLines = [];
@@ -106,7 +118,8 @@
   }
 
   function getAdjustedPositionMs() {
-    return Math.max(0, getAudioPositionMs() + (syncOffsetSeconds * 1000));
+    // Positive offset delays the displayed lyric.
+    return Math.max(0, getAudioPositionMs() - (syncOffsetSeconds * 1000));
   }
 
   function findCurrentIndex(positionMs) {
@@ -187,7 +200,10 @@
 
       if (animate) {
         element.classList.add('lyrics-enter');
-        element.style.setProperty('--lyrics-delay', `${Math.min(120, Math.abs(index - currentIndex) * 30)}ms`);
+        element.style.setProperty(
+          '--lyrics-delay',
+          `${Math.min(120, Math.abs(index - currentIndex) * 30)}ms`
+        );
       }
 
       linesElement.appendChild(element);
@@ -280,7 +296,8 @@
     const key = `${artist}\u001f${title}\u001f${album}`;
 
     const reportedPositionMs = Number(data.progress?.elapsed_seconds);
-    const hasAudioPosition = data.progress?.available === true && Number.isFinite(reportedPositionMs);
+    const hasAudioPosition =
+      data.progress?.available === true && Number.isFinite(reportedPositionMs);
 
     if (hasAudioPosition) {
       audioPositionMs = Math.max(0, reportedPositionMs * 1000);
@@ -302,20 +319,17 @@
     if (!hasAudioPosition) {
       setStatus(lyricsAvailable ? '音声時間待機中' : '歌詞を検索中');
     } else if (lyricsAvailable) {
-      setStatus(`音声同期 ${syncOffsetSeconds >= 0 ? '+' : ''}${syncOffsetSeconds.toFixed(2)}s`);
+      setStatus(
+        `音声同期 ${syncOffsetSeconds >= 0 ? '+' : ''}${syncOffsetSeconds.toFixed(2)}s`
+      );
     }
 
     updateSync(false);
   }
 
-  async function poll() {
-    try {
-      const response = await fetch('/now-playing.json', { cache: 'no-store' });
-      if (!response.ok) return;
-      handleNowPlaying(await response.json());
-    } catch (error) {
-      console.warn('PlayPanel: lyrics metadata update failed', error);
-    }
+  function handleNowPlayingEvent(event) {
+    if (!event?.detail) return;
+    handleNowPlaying(event.detail);
   }
 
   toggle.addEventListener('click', () => setMode(!lyricsMode));
@@ -326,7 +340,12 @@
     setMode(!lyricsMode);
   });
 
+  window.addEventListener('playpanel:now-playing', handleNowPlayingEvent);
+
   startSyncTimer();
-  poll();
-  window.setInterval(poll, 250);
+
+  const initialState = window.PLAYPANEL_STATE?.get();
+  if (initialState) {
+    handleNowPlaying(initialState);
+  }
 })();
