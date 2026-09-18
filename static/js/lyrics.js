@@ -280,6 +280,7 @@
       currentIndex = findCurrentIndex(getAdjustedPositionMs());
       toggle.hidden = false;
       renderLines(false);
+      setMode(document.body.classList.contains('clock-mode'));
       setStatus('音声同期');
     } catch (error) {
       if (error.name === 'AbortError') return;
