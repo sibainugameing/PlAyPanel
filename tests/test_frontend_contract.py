@@ -85,8 +85,10 @@ def test_clock_mode_places_player_and_current_lyric_below_clock() -> None:
     assert "body.clock-mode .lyrics-panel" in player_css
     assert "display: none !important;" in player_css
     assert "body.clock-mode .now-lyric-bar" in player_css
+    assert "position: static;" in player_css
     assert "z-index: 211;" in player_css
     assert "display: flex !important;" in player_css
+    assert "body.clock-mode .lyrics-toggle" in player_css
     assert ".now-lyric-bar__text" in lyrics_css
 
 
