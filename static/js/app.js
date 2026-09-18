@@ -291,12 +291,19 @@ function setPlayerArtwork(src) {
   }
 }
 
-function setPlayerClientName(name, connected) {
-  const element = document.querySelector('#player-client-name');
-  if (!element) return;
+function setPlayerMetadata(data) {
+  const title = document.querySelector('#clock-player-title');
+  const artist = document.querySelector('#clock-player-artist');
+  const album = document.querySelector('#clock-player-album');
+  const client = document.querySelector('#player-client-name');
 
-  const value = String(name || '').trim();
-  element.textContent = value && connected !== false ? value : 'AirPlay';
+  if (title) title.textContent = data.title || '---';
+  if (artist) artist.textContent = data.artist || '---';
+  if (album) album.textContent = data.album || '---';
+  if (client) {
+    const value = String(data.client_name || '').trim();
+    client.textContent = value && data.connected !== false ? value : 'AirPlay';
+  }
 }
 
 function setArtworkGlow(src) {
@@ -516,7 +523,7 @@ async function updateNowPlaying() {
     }
     if (artist) artist.textContent = data.artist || '---';
     if (album) album.textContent = data.album || '---';
-    setPlayerClientName(data.client_name, data.connected);
+    setPlayerMetadata(data);
 
     const status = document.querySelector('#status');
     const hasTrackInfo = Boolean(data.title || data.artist || data.album || data.track_id);
