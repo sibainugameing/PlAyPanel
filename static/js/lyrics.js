@@ -280,7 +280,13 @@
       currentIndex = findCurrentIndex(getAdjustedPositionMs());
       toggle.hidden = false;
       renderLines(false);
-      setMode(document.body.classList.contains('clock-mode'));
+      if (document.body.classList.contains('clock-mode')) {
+        lyricsMode = false;
+        document.body.classList.remove('lyrics-mode');
+        showCurrentLyric(true);
+      } else {
+        setMode(false);
+      }
       setStatus('音声同期');
     } catch (error) {
       if (error.name === 'AbortError') return;
@@ -342,7 +348,15 @@
   });
 
   window.addEventListener('playpanel:view-mode', (event) => {
-    setMode(event.detail === 'clock');
+    const clockMode = event.detail === 'clock';
+
+    if (clockMode) {
+      lyricsMode = false;
+      document.body.classList.remove('lyrics-mode');
+      showCurrentLyric(true);
+    } else {
+      setMode(false);
+    }
   });
 
   window.addEventListener('playpanel:now-playing', handleNowPlayingEvent);
