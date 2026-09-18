@@ -275,6 +275,30 @@ function applyRecordRotation(record, playing) {
   }, 750);
 }
 
+function setPlayerArtwork(src) {
+  const artwork = document.querySelector('#player-artwork');
+  const fallback = document.querySelector('.player-card__artwork-fallback');
+  if (!artwork) return;
+
+  if (src) {
+    artwork.src = src;
+    artwork.hidden = false;
+    if (fallback) fallback.hidden = true;
+  } else {
+    artwork.removeAttribute('src');
+    artwork.hidden = true;
+    if (fallback) fallback.hidden = false;
+  }
+}
+
+function setPlayerClientName(name, connected) {
+  const element = document.querySelector('#player-client-name');
+  if (!element) return;
+
+  const value = String(name || '').trim();
+  element.textContent = value && connected !== false ? value : 'AirPlay';
+}
+
 function setArtworkGlow(src) {
   const recordStage = document.querySelector('.record-stage');
   if (!recordStage) return;
@@ -392,6 +416,7 @@ function swapArtwork(targetLayer, artworkUrl, playing) {
   artwork.src = artworkUrl;
   artwork.hidden = false;
   currentArtworkUrl = artworkUrl;
+  setPlayerArtwork(artworkUrl);
   setArtworkGlow(artworkUrl);
   runTrackChangeAnimation(targetLayer, playing);
 }
@@ -491,6 +516,7 @@ async function updateNowPlaying() {
     }
     if (artist) artist.textContent = data.artist || '---';
     if (album) album.textContent = data.album || '---';
+    setPlayerClientName(data.client_name, data.connected);
 
     const status = document.querySelector('#status');
     const hasTrackInfo = Boolean(data.title || data.artist || data.album || data.track_id);
