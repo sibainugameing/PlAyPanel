@@ -75,7 +75,7 @@
   let lyricLines = [];
   let currentIndex = -1;
   let lyricsAvailable = false;
-  let lyricsMode = true;
+  let lyricsMode = false;
   let playing = false;
   let audioPositionMs = 0;
   let audioAnchorPerformanceMs = performance.now();
@@ -279,7 +279,6 @@
 
       currentIndex = findCurrentIndex(getAdjustedPositionMs());
       toggle.hidden = false;
-      setMode(true);
       renderLines(false);
       setStatus('音声同期');
     } catch (error) {
@@ -339,6 +338,10 @@
     if (event.key.toLowerCase() !== 'l' || event.ctrlKey || event.metaKey || event.altKey) return;
     if (!lyricsAvailable) return;
     setMode(!lyricsMode);
+  });
+
+  window.addEventListener('playpanel:view-mode', (event) => {
+    setMode(event.detail === 'clock');
   });
 
   window.addEventListener('playpanel:now-playing', handleNowPlayingEvent);
