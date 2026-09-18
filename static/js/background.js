@@ -3,9 +3,14 @@
   if (!stage) return;
 
   const syncArtworkBackground = () => {
-    const activeArtwork = stage.querySelector('.record-layer--active .artwork');
-    const imageUrl = activeArtwork && !activeArtwork.hidden
-      ? activeArtwork.currentSrc || activeArtwork.src
+    const playerArtwork = document.querySelector('#player-artwork');
+    const activeRecordArtwork = stage.querySelector('.record-layer--active .artwork');
+    const preferredArtwork =
+      document.body.classList.contains('clock-mode') && playerArtwork && !playerArtwork.hidden
+        ? playerArtwork
+        : activeRecordArtwork;
+    const imageUrl = preferredArtwork && !preferredArtwork.hidden
+      ? preferredArtwork.currentSrc || preferredArtwork.src
       : '';
 
     if (imageUrl) {
