@@ -145,7 +145,7 @@ body.clock-mode .panel {
   position: fixed;
   left: 50%;
   top: 54vh;
-  z-index: 10;
+  z-index: 210;
   width: min(1600px, calc(100vw - 40px));
   display: block;
   transform: translateX(-50%);
@@ -173,7 +173,7 @@ body.clock-mode .now-lyric-bar {
   left: 50%;
   top: calc(54vh + 112px);
   bottom: auto;
-  z-index: 11;
+  z-index: 211;
   width: min(1100px, calc(100vw - 40px));
   margin: 0;
   display: flex !important;
@@ -181,7 +181,7 @@ body.clock-mode .now-lyric-bar {
 }
 
 body.clock-mode .view-mode-toggle {
-  z-index: 120;
+  z-index: 230;
 }
 
 @media (max-width: 900px) {
