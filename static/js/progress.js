@@ -3,6 +3,7 @@
   const progress = document.querySelector('#record-progress__value');
   const playerProgress = document.querySelector('#player-progress__value');
   const timeElement = document.querySelector('#progress-time');
+  const clockPlayerTimeElement = document.querySelector('#clock-player-progress-time');
 
   if ((!svg || !progress) && !playerProgress) return;
 
@@ -32,11 +33,10 @@
     const playback = data.progress;
 
     if (!playback || playback.available !== true || !Number.isFinite(Number(playback.elapsed_seconds))) {
-      if (timeElement) {
-        const elapsedText = formatTime(Number(playback?.elapsed_seconds), '0:00');
-        const durationText = formatTime(Number(playback?.duration_seconds));
-        timeElement.textContent = `${elapsedText} / ${durationText}`;
-      }
+      const elapsedText = formatTime(Number(playback?.elapsed_seconds), '0:00');
+      const durationText = formatTime(Number(playback?.duration_seconds));
+      if (timeElement) timeElement.textContent = `${elapsedText} / ${durationText}`;
+      if (clockPlayerTimeElement) clockPlayerTimeElement.textContent = `${elapsedText} / ${durationText}`;
 
       if (svg && progress) {
         svg.classList.remove('is-available', 'is-complete', 'is-playing');
@@ -82,7 +82,9 @@
 
     if (timeElement) {
       const durationText = formatTime(durationSeconds);
-      timeElement.textContent = `${formatTime(elapsedSeconds, '0:00')} / ${durationText}`;
+      const formatted = `${formatTime(elapsedSeconds, '0:00')} / ${durationText}`;
+      if (timeElement) timeElement.textContent = formatted;
+      if (clockPlayerTimeElement) clockPlayerTimeElement.textContent = formatted;
     }
 
     if (progress) {
