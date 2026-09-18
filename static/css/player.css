@@ -169,15 +169,23 @@ body.clock-mode .lyrics-panel {
 }
 
 body.clock-mode .now-lyric-bar {
-  position: fixed;
-  left: 50%;
-  top: calc(54vh + 112px);
-  bottom: auto;
+  position: static;
   z-index: 211;
-  width: min(1100px, calc(100vw - 40px));
-  margin: 0;
+  width: min(1100px, 100%);
+  margin: 12px auto 0;
   display: flex !important;
-  transform: translateX(-50%);
+  transform: none;
+  opacity: 1;
+  pointer-events: none;
+}
+
+body.clock-mode .now-lyric-bar.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+body.clock-mode .lyrics-toggle {
+  display: none !important;
 }
 
 body.clock-mode .view-mode-toggle {
