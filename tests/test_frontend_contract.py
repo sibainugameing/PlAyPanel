@@ -69,6 +69,7 @@ def test_horizontal_player_and_lyrics_layout_contract() -> None:
     assert "body.clock-mode .visual" in player_css
     assert "body.clock-mode .player-card" in player_css
     assert "playpanel:view-mode" in lyrics_js
+    assert "playerArtwork" in read_static("static/js/background.js")
 
 
 def test_clock_mode_places_player_and_current_lyric_below_clock() -> None:
@@ -80,8 +81,10 @@ def test_clock_mode_places_player_and_current_lyric_below_clock() -> None:
     assert "top: 18vh;" in style_css
     assert "body.clock-mode .panel" in player_css
     assert "top: 54vh;" in player_css
+    assert "z-index: 210;" in player_css
     assert "body.clock-mode .lyrics-panel" in player_css
     assert "display: none !important;" in player_css
     assert "body.clock-mode .now-lyric-bar" in player_css
+    assert "z-index: 211;" in player_css
     assert "display: flex !important;" in player_css
     assert ".now-lyric-bar__text" in lyrics_css
