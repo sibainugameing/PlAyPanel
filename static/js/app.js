@@ -36,6 +36,27 @@ const screenBlankTimeoutMinutes = Number(displayConfig.screenBlankTimeoutMinutes
 
 const recordRotationDurationSeconds = 60 / recordRotationSpeed;
 
+// Single source of truth for /now-playing.json.
+// Other frontend modules subscribe to this state instead of polling the endpoint themselves.
+window.PLAYPANEL_STATE = {
+  data: null,
+  receivedAt: 0,
+  get() {
+    return this.data;
+  },
+  getReceivedAt() {
+    return this.receivedAt;
+  },
+};
+
+function publishNowPlaying(data) {
+  window.PLAYPANEL_STATE.data = data;
+  window.PLAYPANEL_STATE.receivedAt = performance.now();
+  window.dispatchEvent(new CustomEvent('playpanel:now-playing', {
+    detail: data,
+  }));
+}
+
 document.body.classList.toggle('animations-disabled', !animationsEnabled);
 document.documentElement.style.setProperty(
   '--record-rotation-duration',
@@ -414,6 +435,7 @@ async function updateNowPlaying() {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
     const data = await response.json();
+    publishNowPlaying(data);
 
     const title = data.title || '---';
     const artist = document.querySelector('#artist');
