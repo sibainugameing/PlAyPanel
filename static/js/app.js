@@ -465,6 +465,10 @@ async function updateNowPlaying() {
     const trackChanged = trackKey !== currentTrackKey;
 
     if (trackChanged) {
+      // Treat a track change like user activity: wake the display and reset
+      // the configured blanking countdown.
+      wakeScreen();
+
       currentTrackKey = trackKey;
       artworkLoadedTrackKey = null;
       artworkRequestKey = null;
