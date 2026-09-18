@@ -17,7 +17,7 @@ def make_item(code_hex: str, payload: bytes, type_hex: str = "73736e63") -> byte
         header
         + '<data encoding="base64">\n'
         + encoded
-        + "\n</data></item>\n"
+        + "</data></item>\n"
     ).encode("ascii")
 
 
