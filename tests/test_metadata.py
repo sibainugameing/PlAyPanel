@@ -37,10 +37,9 @@ def test_read_metadata_item_decodes_payload() -> None:
 def test_read_metadata_item_rejects_invalid_end_tag() -> None:
     stream = BytesIO(
         b'<item><type>73736e63</type><code>6d696e6d</code><length>3</length></item>\n'
-        b'<data encoding="base64">\nYWJj\n</data></item>\n'
+        b'<data encoding="base64">\nYWJj\n</data></item>NOT_VALID\n'
     )
-    stream.seek(0)
-    assert read_metadata_item(stream) == ("ssnc", "minm", 3, b"abc")
+    assert read_metadata_item(stream) is None
 
 
 def test_apply_metadata_populates_track_fields() -> None:
