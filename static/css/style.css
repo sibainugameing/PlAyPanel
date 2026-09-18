@@ -579,14 +579,15 @@ body.animations-disabled * {
 }
 
 body.clock-mode .clock {
-  top: 50%;
+  top: 18vh;
   left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 40;
+  transform: translateX(-50%);
+  z-index: 200;
   color: rgba(255, 255, 255, 0.94);
   font-size: clamp(5rem, 15vw, 12.5rem);
   font-weight: 700;
   letter-spacing: -0.055em;
+  line-height: 0.95;
   text-shadow: 0 12px 50px rgba(0, 0, 0, 0.48);
 }
 
