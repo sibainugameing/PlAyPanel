@@ -27,12 +27,13 @@ def test_progress_ratio_is_clamped_to_duration(monkeypatch) -> None:
 
 
 def test_freeze_and_resume_preserve_elapsed_position(monkeypatch) -> None:
-    clock = iter([10.0, 13.0, 20.0])
-    monkeypatch.setattr(models.time, "monotonic", lambda: next(clock))
+    now = [10.0]
+    monkeypatch.setattr(models.time, "monotonic", lambda: now[0])
 
     state = TrackMetadata(playing=True)
     state.set_progress(0, 0, 441000)
 
+    now[0] = 13.0
     frozen = state.current_elapsed_seconds()
     state.freeze_progress()
 
@@ -40,6 +41,7 @@ def test_freeze_and_resume_preserve_elapsed_position(monkeypatch) -> None:
     assert state.progress_elapsed_seconds == 3.0
     assert state.progress_anchor_monotonic is None
 
+    now[0] = 20.0
     state.playing = True
     state.resume_progress()
     assert state.progress_anchor_monotonic == 20.0
