@@ -47,3 +47,22 @@ def test_view_mode_toggle_is_present_and_persistent() -> None:
     assert "localStorage.setItem('playpanel:view-mode', viewMode)" in app_js
     assert "body.clock-mode .clock" in style_css
     assert "body.clock-mode .panel" in style_css
+
+
+def test_horizontal_player_and_lyrics_layout_contract() -> None:
+    html = (ROOT / "templates/index.html").read_text(encoding="utf-8")
+    app_js = read_static("static/js/app.js")
+    lyrics_js = read_static("static/js/lyrics.js")
+    progress_js = read_static("static/js/progress.js")
+    player_css = read_static("static/css/player.css")
+
+    assert 'class="player-card"' in html
+    assert 'id="player-artwork"' in html
+    assert 'id="player-progress__value"' in html
+    assert 'id="player-client-name"' in html
+    assert "setPlayerArtwork(artworkUrl);" in app_js
+    assert "setPlayerClientName(data.client_name, data.connected);" in app_js
+    assert "player-progress__value" in progress_js
+    assert "let lyricsMode = true;" in lyrics_js
+    assert "setMode(true);" in lyrics_js
+    assert ".player-card" in player_css
