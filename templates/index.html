@@ -125,6 +125,12 @@
   <div id="screen-blank" class="screen-blank" aria-hidden="true"></div>
   {% endif %}
 
+  {% if config.clock_enabled %}
+  <button id="view-mode-toggle" class="view-mode-toggle" type="button" aria-label="表示モードを切り替え">
+    時計モード
+  </button>
+  {% endif %}
+
   <script>
     window.PLAYPANEL_CONFIG = {
       pollIntervalMs: {{ config.poll_interval_ms }},
