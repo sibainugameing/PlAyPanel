@@ -9,7 +9,7 @@ from core.models import TrackMetadata
 def make_item(code_hex: str, payload: bytes, type_hex: str = "73736e63") -> bytes:
     header = (
         f"<item><type>{type_hex}</type><code>{code_hex}</code>"
-        f"<length>{len(payload)}</length></item>\n"
+        f"<length>{len(payload)}</length>\n"
     )
     import base64
     encoded = base64.b64encode(payload).decode("ascii")
