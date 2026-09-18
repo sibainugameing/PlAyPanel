@@ -142,9 +142,13 @@ body.clock-mode .visual {
 }
 
 body.clock-mode .panel {
+  position: fixed;
+  left: 50%;
+  top: 54vh;
+  z-index: 10;
   width: min(1600px, calc(100vw - 40px));
   display: block;
-  transform: translateY(32vh);
+  transform: translateX(-50%);
 }
 
 body.clock-mode .info {
@@ -161,21 +165,23 @@ body.clock-mode .player-card {
 }
 
 body.clock-mode .lyrics-panel {
-  width: min(1100px, 100%);
-  margin: 14px auto 0;
-}
-
-body.clock-mode .now-lyric-bar {
   display: none !important;
 }
 
-body.clock-mode .player-card,
-body.clock-mode .lyrics-panel {
-  opacity: 1;
+body.clock-mode .now-lyric-bar {
+  position: fixed;
+  left: 50%;
+  top: calc(54vh + 112px);
+  bottom: auto;
+  z-index: 11;
+  width: min(1100px, calc(100vw - 40px));
+  margin: 0;
+  display: flex !important;
+  transform: translateX(-50%);
 }
 
-body.clock-mode .player-card + .lyrics-panel {
-  margin-top: 14px;
+body.clock-mode .view-mode-toggle {
+  z-index: 120;
 }
 
 @media (max-width: 900px) {
