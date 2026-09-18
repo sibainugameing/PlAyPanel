@@ -123,6 +123,9 @@ function toggleViewMode() {
 
   wakeScreen();
   applyViewMode();
+  window.dispatchEvent(new CustomEvent('playpanel:view-mode', {
+    detail: viewMode,
+  }));
 }
 
 function setupViewMode() {
