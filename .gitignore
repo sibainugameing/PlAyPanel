@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# PlayPanel local runtime cache
+lyrics_cache/
