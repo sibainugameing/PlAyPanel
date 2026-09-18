@@ -66,8 +66,8 @@ def test_apply_progress_and_duration() -> None:
     assert state.progress_end_rtp == 44200
 
 
-def test_track_change_resets_progress_and_stale_artwork() -> None:
-    state = TrackMetadata(track_id="old", artwork=b"not-relevant", artwork_track_id="old")
+def test_track_change_resets_progress_and_drops_unrelated_artwork() -> None:
+    state = TrackMetadata(track_id="old", artwork=b"stale", artwork_track_id="other")
     state.playing = True
     apply_item(state, ("ssnc", "prgr", 0, b"100/200/300"))
     apply_item(state, ("ssnc", "mper", 3, b"new"))
