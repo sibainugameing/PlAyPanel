@@ -88,3 +88,11 @@ def test_clock_mode_places_player_and_current_lyric_below_clock() -> None:
     assert "z-index: 211;" in player_css
     assert "display: flex !important;" in player_css
     assert ".now-lyric-bar__text" in lyrics_css
+
+
+def test_clock_mode_does_not_dim_player_through_parent_panel() -> None:
+    style_css = read_static("static/css/style.css")
+    clock_block = style_css.split("body.clock-mode .panel", 1)[1].split("body.clock-mode .record-stage", 1)[0]
+
+    assert "opacity:" not in clock_block
+    assert "transform: scale" not in clock_block
