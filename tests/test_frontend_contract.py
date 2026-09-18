@@ -96,3 +96,14 @@ def test_clock_mode_does_not_dim_player_through_parent_panel() -> None:
 
     assert "opacity:" not in clock_block
     assert "transform: scale" not in clock_block
+
+
+def test_clock_mode_shows_current_lyric_bar_without_full_lyrics_panel() -> None:
+    lyrics_js = read_static("static/js/lyrics.js")
+    player_css = read_static("static/css/player.css")
+
+    assert "showCurrentLyric(true);" in lyrics_js
+    assert "body.classList.remove('lyrics-mode')" in lyrics_js
+    assert "body.clock-mode .lyrics-panel" in player_css
+    assert "display: none !important;" in player_css
+    assert "body.clock-mode .now-lyric-bar" in player_css
