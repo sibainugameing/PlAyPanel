@@ -75,7 +75,7 @@
   let lyricLines = [];
   let currentIndex = -1;
   let lyricsAvailable = false;
-  let lyricsMode = false;
+  let lyricsMode = true;
   let playing = false;
   let audioPositionMs = 0;
   let audioAnchorPerformanceMs = performance.now();
@@ -278,8 +278,9 @@
       }
 
       currentIndex = findCurrentIndex(getAdjustedPositionMs());
-      renderLines(false);
       toggle.hidden = false;
+      setMode(true);
+      renderLines(false);
       setStatus('音声同期');
     } catch (error) {
       if (error.name === 'AbortError') return;
