@@ -1,15 +1,18 @@
 (() => {
   const svg = document.querySelector('#record-progress');
   const progress = document.querySelector('#record-progress__value');
+  const playerProgress = document.querySelector('#player-progress__value');
   const timeElement = document.querySelector('#progress-time');
 
-  if (!svg || !progress) return;
+  if ((!svg || !progress) && !playerProgress) return;
 
   // One SVG circle, one continuous stroke. The dash values use the SVG pathLength
   // unit so rendering size never changes the number of visible segments.
-  progress.setAttribute('pathLength', '1');
-  progress.setAttribute('stroke-dasharray', '1');
-  progress.setAttribute('stroke-dashoffset', '1');
+  if (progress) {
+    progress.setAttribute('pathLength', '1');
+    progress.setAttribute('stroke-dasharray', '1');
+    progress.setAttribute('stroke-dashoffset', '1');
+  }
 
   let latestData = null;
   let receivedAt = 0;
@@ -35,13 +38,19 @@
         timeElement.textContent = `${elapsedText} / ${durationText}`;
       }
 
-      svg.classList.remove('is-available', 'is-complete', 'is-playing');
-      progress.setAttribute('stroke-dashoffset', '1');
+      if (svg && progress) {
+        svg.classList.remove('is-available', 'is-complete', 'is-playing');
+        progress.setAttribute('stroke-dashoffset', '1');
+      }
+      if (playerProgress) playerProgress.style.width = '0%';
       return;
     }
 
-    svg.classList.add('is-available');
-    svg.classList.toggle('is-playing', data.playing === true);
+    if (svg) {
+      svg.classList.add('is-available');
+      svg.classList.toggle('is-playing', data.playing === true);
+    }
+    if (playerProgress) playerProgress.style.width = '0%';
   };
 
   const render = () => {
@@ -76,8 +85,11 @@
       timeElement.textContent = `${formatTime(elapsedSeconds, '0:00')} / ${durationText}`;
     }
 
-    progress.setAttribute('stroke-dashoffset', String(1 - ratio));
-    svg.classList.toggle('is-complete', ratio >= 0.999);
+    if (progress) {
+      progress.setAttribute('stroke-dashoffset', String(1 - ratio));
+      if (svg) svg.classList.toggle('is-complete', ratio >= 0.999);
+    }
+    if (playerProgress) playerProgress.style.width = `${(ratio * 100).toFixed(3)}%`;
   };
 
   const handleNowPlayingEvent = (event) => {
