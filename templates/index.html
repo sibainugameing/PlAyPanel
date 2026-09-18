@@ -94,28 +94,34 @@
     </section>
 
     <section class="info">
-      <section class="player-card" aria-label="再生中の音楽">
+      <div class="eyebrow">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="status">待機中</span>
+      </div>
+
+      <div class="track-copy">
+        <p class="now-playing">NOW PLAYING</p>
+        <p id="progress-time" class="progress-time" aria-label="再生時間">0:00 / --:--</p>
+        <h1 id="title">---</h1>
+        <p id="artist" class="artist">---</p>
+        <p id="album" class="album">---</p>
+      </div>
+
+      <section class="player-card" aria-label="簡易再生情報">
         <div class="player-card__artwork">
           <img id="player-artwork" src="" alt="アルバムアート" hidden>
           <div class="player-card__artwork-fallback" aria-hidden="true">PLAY</div>
         </div>
-
         <div class="player-card__main">
-          <div class="player-card__eyebrow">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span id="status">待機中</span>
-          </div>
-
           <div class="player-card__copy">
             <p class="player-card__label">NOW PLAYING</p>
-            <h1 id="title">---</h1>
-            <p id="artist" class="artist">---</p>
-            <p id="album" class="album">---</p>
+            <h2 id="clock-player-title">---</h2>
+            <p id="clock-player-artist" class="artist">---</p>
+            <p id="clock-player-album" class="album">---</p>
           </div>
-
           <div class="player-card__progress">
             <div class="player-card__time">
-              <span id="progress-time" aria-label="再生時間">0:00 / --:--</span>
+              <span id="clock-player-progress-time" aria-label="再生時間">0:00 / --:--</span>
               <span id="player-client-name" class="player-card__client">AirPlay</span>
             </div>
             <div class="player-card__progress-track" aria-hidden="true">
@@ -124,8 +130,6 @@
           </div>
         </div>
       </section>
-
-      <div class="track-copy player-legacy-copy" aria-hidden="true"></div>
 
       <div class="lyrics-panel" id="lyrics-panel" hidden aria-label="歌詞">
         <div id="lyrics-lines" class="lyrics-lines"></div>
