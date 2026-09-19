@@ -109,3 +109,12 @@ def test_clock_mode_shows_current_lyric_bar_without_full_lyrics_panel() -> None:
     assert "body.clock-mode .lyrics-panel" in player_css
     assert "display: none !important;" in player_css
     assert "body.clock-mode .now-lyric-bar" in player_css
+
+
+def test_blank_screen_covers_clock_and_view_mode_controls() -> None:
+    style_css = read_static("static/css/style.css")
+
+    blank_block = style_css.split(".screen-blank", 1)[1].split(".panel", 1)[0]
+    assert "z-index: 1000;" in blank_block
+    assert "z-index: 200;" in style_css
+    assert "z-index: 230;" in style_css
