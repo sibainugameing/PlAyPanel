@@ -270,13 +270,60 @@ class LyricsService:
             raise RuntimeError("Invalid LRCLIB track response")
         return payload.get("syncedLyrics"), payload.get("plainLyrics")
 
-    def _fetch_search_candidates(self, title: str) -> list[dict]:
+    def _fetch_search_candidates(
+        self,
+        title: str,
+        artist: str,
+        album: str,
+    ) -> list[dict]:
         all_candidates: dict[str, dict] = {}
-        for search_title in self._title_variants(title):
-            payload = self._request_json(
-                LRCLIB_SEARCH_URL,
-                {"track_name": search_title},
+
+        # LRCLIB search supports structured title/artist/album parameters.
+        # Use those first so a common title does not drown out the requested
+        # artist. Then fall back to broader queries for metadata variations.
+        queries: list[dict[str, str]] = []
+        title_variants = self._title_variants(title)
+
+        for search_title in title_variants:
+            queries.append(
+                {
+                    "track_name": search_title,
+                    "artist_name": artist,
+                    **({"album_name": album} if album else {}),
+                }
             )
+
+        for search_title in title_variants:
+            queries.append(
+                {
+                    "track_name": search_title,
+                    "artist_name": artist,
+                }
+            )
+
+        normalized_query = " ".join(
+            part for part in (search_title if (search_title := title) else "", artist) if part
+        ).strip()
+        if normalized_query:
+            queries.append({"q": normalized_query})
+
+        for search_title in title_variants:
+            queries.append({"track_name": search_title})
+
+        seen_queries: set[tuple[tuple[str, str], ...]] = set()
+        for params in queries:
+            query_key = tuple(sorted(params.items()))
+            if query_key in seen_queries:
+                continue
+            seen_queries.add(query_key)
+
+            try:
+                payload = self._request_json(LRCLIB_SEARCH_URL, params)
+            except Exception:
+                # One broad/structured search failing should not prevent the
+                # remaining fallback queries from running.
+                continue
+
             if not isinstance(payload, list):
                 continue
 
@@ -295,7 +342,7 @@ class LyricsService:
         artist: str,
         album: str,
     ) -> tuple[str | None, str | None] | None:
-        candidates = self._fetch_search_candidates(title)
+        candidates = self._fetch_search_candidates(title, artist, album)
         if not candidates:
             return None
 
