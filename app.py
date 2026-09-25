@@ -17,6 +17,7 @@ lyrics_service = LyricsService(
     config.lyrics_cache_dir,
     config.lyrics_timeout_seconds,
     config.lyrics_cache_max_entries,
+    config.lyrics_negative_cache_ttl_seconds,
 )
 
 
