@@ -302,7 +302,7 @@ class LyricsService:
             )
 
         normalized_query = " ".join(
-            part for part in (search_title if (search_title := title) else "", artist) if part
+            part for part in (title, artist) if part
         ).strip()
         if normalized_query:
             queries.append({"q": normalized_query})
