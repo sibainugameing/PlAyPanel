@@ -26,6 +26,7 @@ artwork_size = 640
 enabled = false
 visible_lines = 7
 sync_offset_seconds = -0.5
+negative_cache_ttl_seconds = 1234
 
 [display]
 clock_enabled = false
@@ -44,6 +45,7 @@ screen_blank_timeout_minutes = 45
     assert loaded.lyrics_enabled is False
     assert loaded.lyrics_visible_lines == 7
     assert loaded.lyrics_sync_offset_seconds == -0.5
+    assert loaded.lyrics_negative_cache_ttl_seconds == 1234.0
     assert loaded.clock_enabled is False
     assert loaded.screen_blank_enabled is False
     assert loaded.screen_blank_timeout_minutes == 45
