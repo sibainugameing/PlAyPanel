@@ -55,6 +55,8 @@ cache_dir = "lyrics_cache"
 # Oldest least-recently-used entries are removed above this count.
 cache_max_entries = 500
 timeout_seconds = 8.0
+# Retry tracks that previously had no lyrics after this many seconds.
+negative_cache_ttl_seconds = 3600.0
 visible_lines = 5
 current_line_size = "2.4rem"
 side_line_size = "1.15rem"
