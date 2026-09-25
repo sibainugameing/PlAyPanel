@@ -99,3 +99,22 @@ def test_negative_cache_expires_and_retries_remote_lookup(tmp_path, monkeypatch)
 
     assert result["synced"] is True
     assert calls == [("Song", "Artist", "")]
+
+
+def test_search_candidates_use_artist_and_album_before_broad_fallbacks(tmp_path, monkeypatch) -> None:
+    service = LyricsService(str(tmp_path), timeout_seconds=1.0, max_entries=10)
+    captured = []
+
+    def fake_request_json(url, params):
+        captured.append(dict(params))
+        return []
+
+    monkeypatch.setattr(service, "_request_json", fake_request_json)
+
+    service._fetch_search_candidates("Song (feat. Alice)", "Artist", "Album")
+
+    assert {"track_name": "Song (feat. Alice)", "artist_name": "Artist", "album_name": "Album"} in captured
+    assert {"track_name": "Song", "artist_name": "Artist", "album_name": "Album"} in captured
+    assert {"track_name": "Song", "artist_name": "Artist"} in captured
+    assert {"q": "Song (feat. Alice) Artist"} in captured
+    assert {"track_name": "Song (feat. Alice)"} in captured
