@@ -15,16 +15,23 @@ from urllib.request import Request, urlopen
 
 LRCLIB_GET_URL = "https://lrclib.net/api/get"
 LRCLIB_SEARCH_URL = "https://lrclib.net/api/search"
-CACHE_VERSION = "v7"
+CACHE_VERSION = "v8"
 
 
 class LyricsService:
-    def __init__(self, cache_dir: str, timeout_seconds: float = 8.0, max_entries: int = 500):
+    def __init__(
+        self,
+        cache_dir: str,
+        timeout_seconds: float = 8.0,
+        max_entries: int = 500,
+        negative_cache_ttl_seconds: float = 3600.0,
+    ):
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.db_path = self.cache_dir / "lyrics.sqlite3"
         self.timeout_seconds = timeout_seconds
         self.max_entries = max(1, max_entries)
+        self.negative_cache_ttl_seconds = max(0.0, negative_cache_ttl_seconds)
         self._init_db()
         self._inflight_lock = threading.Lock()
         self._inflight: dict[str, threading.Event] = {}
@@ -162,13 +169,32 @@ class LyricsService:
             if row is None:
                 return None
 
+            row_dict = dict(row)
             now = time.time()
+
+            # Negative results are deliberately temporary. Lyrics providers can
+            # gain a track after the first lookup, so "not found" must not live
+            # forever in the local cache.
+            if (
+                int(row_dict.get("found", 0)) == 0
+                and (
+                    self.negative_cache_ttl_seconds <= 0
+                    or now - float(row_dict["created_at"]) >= self.negative_cache_ttl_seconds
+                )
+            ):
+                db.execute(
+                    "DELETE FROM lyrics_cache WHERE cache_key = ?",
+                    (key,),
+                )
+                db.commit()
+                return None
+
             db.execute(
                 "UPDATE lyrics_cache SET last_used = ? WHERE cache_key = ?",
                 (now, key),
             )
             db.commit()
-            return dict(row)
+            return row_dict
 
     def _save(
         self,
