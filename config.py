@@ -58,6 +58,7 @@ class PlayPanelConfig:
     lyrics_cache_dir: str = "lyrics_cache"
     lyrics_cache_max_entries: int = 500
     lyrics_timeout_seconds: float = 8.0
+    lyrics_negative_cache_ttl_seconds: float = 3600.0
     lyrics_visible_lines: int = 5
     lyrics_current_size: str = "2.4rem"
     lyrics_side_size: str = "1.15rem"
@@ -144,6 +145,12 @@ def load_config(path: Path = CONFIG_FILE) -> PlayPanelConfig:
         lyrics_cache_dir=str(lyrics.get("cache_dir", defaults.lyrics_cache_dir)),
         lyrics_cache_max_entries=int(lyrics.get("cache_max_entries", defaults.lyrics_cache_max_entries)),
         lyrics_timeout_seconds=float(lyrics.get("timeout_seconds", defaults.lyrics_timeout_seconds)),
+        lyrics_negative_cache_ttl_seconds=float(
+            lyrics.get(
+                "negative_cache_ttl_seconds",
+                defaults.lyrics_negative_cache_ttl_seconds,
+            )
+        ),
         lyrics_visible_lines=int(lyrics.get("visible_lines", defaults.lyrics_visible_lines)),
         lyrics_current_size=str(lyrics.get("current_line_size", defaults.lyrics_current_size)),
         lyrics_side_size=str(lyrics.get("side_line_size", defaults.lyrics_side_size)),
